@@ -14,7 +14,7 @@ export default function Navbar() {
     { href: "/stake", label: "Stake" },
     { href: "/swap", label: "Swap", icon: "🔄" },
     { href: "/bridge", label: "Bridge", icon: "🌉" },
-    { href: "/privacy", label: "Privacy", icon: "🔐" },
+    // { href: "/privacy", label: "Privacy", icon: "🔐" },
     { href: "/analytics", label: "Analytics", icon: "📊" },
     { href: "/history", label: "History", icon: "📋" },
   ];
