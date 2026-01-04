@@ -144,7 +144,7 @@
 // const POLL_INTERVAL = 30000;
 
 // export default function HistoryPage() {
-//   const { connected, walletAddress, connect, loading: walletLoading } = useWallet();
+//   const { connected, walletAddress, connect, loading: walletLoading, pendingUnstakes } = useWallet();
 //   const [transactions, setTransactions] = useState<Transaction[]>([]);
 //   const [loading, setLoading] = useState(false);
 //   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -153,6 +153,34 @@
 //   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 //   const [newTxCount, setNewTxCount] = useState(0);
 //   const [seenHashes, setSeenHashes] = useState<Set<string>>(new Set());
+//   const [mounted, setMounted] = useState(false);
+//   const [lastUpdatedText, setLastUpdatedText] = useState("");
+
+//   // Mark as mounted (client-side only)
+//   useEffect(() => {
+//     setMounted(true);
+//   }, []);
+
+//   // Update "last updated" text every 10 seconds (client-side only)
+//   useEffect(() => {
+//     if (!lastUpdated) return;
+    
+//     const updateText = () => {
+//       const now = new Date();
+//       const diffMs = now.getTime() - lastUpdated.getTime();
+//       const diffSec = Math.floor(diffMs / 1000);
+//       const diffMin = Math.floor(diffSec / 60);
+      
+//       if (diffSec < 10) setLastUpdatedText("Just now");
+//       else if (diffSec < 60) setLastUpdatedText(`${diffSec}s ago`);
+//       else if (diffMin < 60) setLastUpdatedText(`${diffMin}m ago`);
+//       else setLastUpdatedText(lastUpdated.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }));
+//     };
+    
+//     updateText();
+//     const interval = setInterval(updateText, 10000);
+//     return () => clearInterval(interval);
+//   }, [lastUpdated]);
 
 //   const parseTransactions = useCallback((data: ApiTransaction[]): Transaction[] => {
 //     return data.map((deploy: ApiTransaction) => {
@@ -303,20 +331,6 @@
 //     setNewTxCount(0);
 //     setTransactions(prev => prev.map(tx => ({ ...tx, isNew: false })));
 //     setFilter("all");
-//   };
-
-//   // Format last updated time
-//   const formatLastUpdated = (date: Date | null) => {
-//     if (!date) return "";
-//     const now = new Date();
-//     const diffMs = now.getTime() - date.getTime();
-//     const diffSec = Math.floor(diffMs / 1000);
-//     const diffMin = Math.floor(diffSec / 60);
-    
-//     if (diffSec < 10) return "Just now";
-//     if (diffSec < 60) return `${diffSec}s ago`;
-//     if (diffMin < 60) return `${diffMin}m ago`;
-//     return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 //   };
 
 //   // Filter transactions
@@ -476,6 +490,15 @@
 //             </div>
 //             <p className="text-gray-400">Loading transactions...</p>
 //           </div>
+//         ) : !mounted ? (
+//           /* SSR placeholder - prevents hydration mismatch */
+//           <div className="text-center py-16 md:py-24">
+//             <div className="w-16 h-16 mx-auto mb-6 relative">
+//               <div className="absolute inset-0 rounded-full border-4 border-[#FF0032]/20"></div>
+//               <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#FF0032] animate-spin"></div>
+//             </div>
+//             <p className="text-gray-400">Loading...</p>
+//           </div>
 //         ) : (
 //           <>
 //             {/* New Transactions Banner */}
@@ -516,9 +539,14 @@
 //                 )}
 //               </div>
               
-//               <div className="bg-yellow-500/5 border border-yellow-500/20 p-3 md:p-4 rounded-xl">
-//                 <p className="text-gray-500 text-xs md:text-sm mb-1">◷ Pending</p>
-//                 <p className="text-xl md:text-2xl font-black text-yellow-400">{stats.pending}</p>
+//               <div className="bg-purple-500/5 border border-purple-500/20 p-3 md:p-4 rounded-xl">
+//                 <p className="text-gray-500 text-xs md:text-sm mb-1">⏳ Unbonding</p>
+//                 <p className="text-xl md:text-2xl font-black text-purple-400">{pendingUnstakes?.length || 0}</p>
+//                 {pendingUnstakes && pendingUnstakes.length > 0 && (
+//                   <p className="text-xs text-gray-500 mt-1">
+//                     {pendingUnstakes.reduce((sum, u) => sum + u.amount, 0).toFixed(2)} CSPR
+//                   </p>
+//                 )}
 //               </div>
               
 //               <div className="bg-white/5 border border-white/10 p-3 md:p-4 rounded-xl">
@@ -533,6 +561,71 @@
 //                 <p className="text-xl md:text-2xl font-black text-[#FF0032]">{stats.failed}</p>
 //               </div>
 //             </div>
+
+//             {/* Unbonding Section - Shows pending unstakes in 7-day waiting period */}
+//             {pendingUnstakes && pendingUnstakes.length > 0 && (
+//               <div className="mb-6 bg-purple-500/5 border border-purple-500/20 rounded-xl overflow-hidden">
+//                 <div className="p-4 border-b border-purple-500/10 flex items-center justify-between">
+//                   <div className="flex items-center gap-2">
+//                     <span className="text-xl">⏳</span>
+//                     <div>
+//                       <p className="font-bold text-purple-400 text-sm">Unbonding Period</p>
+//                       <p className="text-gray-500 text-xs">CSPR waiting for 7-day unlock</p>
+//                     </div>
+//                   </div>
+//                   <span className="bg-purple-500/20 text-purple-400 text-xs font-bold px-2 py-1 rounded">
+//                     {pendingUnstakes.length} pending
+//                   </span>
+//                 </div>
+//                 <div className="divide-y divide-purple-500/10">
+//                   {pendingUnstakes.map((unstake, i) => {
+//                     // Calculate progress (mock - use actual timestamps in production)
+//                     const daysRemaining = Math.max(1, 7 - i);
+//                     const progress = ((7 - daysRemaining) / 7) * 100;
+//                     const isReady = daysRemaining === 0;
+                    
+//                     return (
+//                       <div key={i} className="p-4 flex items-center justify-between">
+//                         <div className="flex items-center gap-3">
+//                           <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isReady ? 'bg-green-500/20' : 'bg-purple-500/20'}`}>
+//                             {isReady ? (
+//                               <span className="text-green-400 font-bold">✓</span>
+//                             ) : (
+//                               <span className="text-purple-400 text-xs font-bold">{daysRemaining}d</span>
+//                             )}
+//                           </div>
+//                           <div>
+//                             <p className="text-white font-bold">{unstake.amount.toFixed(2)} CSPR</p>
+//                             <p className="text-gray-500 text-xs">Unlocks: {unstake.unlockDate}</p>
+//                           </div>
+//                         </div>
+//                         <div className="flex items-center gap-4">
+//                           {/* Progress bar */}
+//                           <div className="hidden sm:block w-24 h-2 bg-white/10 rounded-full overflow-hidden">
+//                             <div 
+//                               className={`h-full rounded-full ${isReady ? 'bg-green-400' : 'bg-purple-400'}`}
+//                               style={{ width: `${progress}%` }}
+//                             />
+//                           </div>
+//                           {isReady ? (
+//                             <Link 
+//                               href="/stake"
+//                               className="px-3 py-1.5 bg-green-500 text-black text-xs font-bold rounded-lg hover:bg-green-400"
+//                             >
+//                               Withdraw
+//                             </Link>
+//                           ) : (
+//                             <span className="text-purple-400 text-xs font-medium">
+//                               {daysRemaining} days left
+//                             </span>
+//                           )}
+//                         </div>
+//                       </div>
+//                     );
+//                   })}
+//                 </div>
+//               </div>
+//             )}
 
 //             {/* Filter Buttons & Refresh */}
 //             <div className="flex flex-wrap items-center gap-2 mb-6">
@@ -561,10 +654,10 @@
 //               {/* Refresh & Last Updated */}
 //               <div className="ml-auto flex items-center gap-3">
 //                 {/* Last Updated */}
-//                 {lastUpdated && (
+//                 {lastUpdated && mounted && (
 //                   <div className="hidden md:flex items-center gap-2 text-xs text-gray-500">
 //                     <div className={`w-2 h-2 rounded-full ${isRefreshing ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'}`}></div>
-//                     <span>Updated {formatLastUpdated(lastUpdated)}</span>
+//                     <span>Updated {lastUpdatedText}</span>
 //                   </div>
 //                 )}
                 
@@ -583,10 +676,10 @@
 //             </div>
 
 //             {/* Auto-refresh indicator (mobile) */}
-//             {lastUpdated && (
+//             {lastUpdated && mounted && (
 //               <div className="md:hidden flex items-center justify-center gap-2 text-xs text-gray-500 mb-4">
 //                 <div className={`w-2 h-2 rounded-full ${isRefreshing ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'}`}></div>
-//                 <span>Auto-refreshes every 30s • Updated {formatLastUpdated(lastUpdated)}</span>
+//                 <span>Auto-refreshes every 30s • Updated {lastUpdatedText}</span>
 //               </div>
 //             )}
 
@@ -792,9 +885,13 @@ const CASPERSTAKE_CONTRACTS = [
   "1260305e8fbadbee64fb4f4107499cd75afd11d786b13f53a496cfdaadfe0720",
 ];
 
+// WCSPR contract for identifying wrap/unwrap
+const WCSPR_CONTRACT = "4f2d1b772147b9ce3706919fe0750af6964249b0931e2115045f97e1e135e80b";
+
 type ActionType = "stake" | "unstake" | "withdraw" | "claim" | "bridge" | "swap" | "deploy" | "init" | "unknown";
 type TxStatus = "success" | "failed" | "pending";
 
+// User-facing actions to show in history (swap includes wrap/unwrap)
 const USER_FACING_ACTIONS: ActionType[] = ["stake", "unstake", "withdraw", "claim", "bridge", "swap"];
 
 interface Transaction {
@@ -836,6 +933,8 @@ interface ApiTransaction {
     amount?: {
       parsed?: number;
     };
+    wcspr_hash?: any;
+    wcspr_contract_hash?: any;
   };
   cost?: string;
   payment_amount?: string;
@@ -847,7 +946,7 @@ interface ApiTransaction {
   execution_type_id?: number;
 }
 
-// Determine action type from entry point name
+// FIXED: Better action type detection including wrap/unwrap
 function getActionDetails(deploy: ApiTransaction): { name: string; type: ActionType } {
   let entryPoint = "";
   
@@ -864,6 +963,21 @@ function getActionDetails(deploy: ApiTransaction): { name: string; type: ActionT
   }
   
   const entryPointLower = entryPoint.toLowerCase().trim();
+  const contractHash = deploy.contract_hash || deploy.contractHash || deploy.contract_package_hash || "";
+  
+  // Check for wrap/unwrap by looking at args or contract
+  const hasWcsprArg = deploy.args?.wcspr_hash || deploy.args?.wcspr_contract_hash;
+  const isWcsprContract = contractHash.toLowerCase().includes(WCSPR_CONTRACT.toLowerCase());
+  
+  // WASM deploy detection - these are swap operations
+  if (entryPointLower === "wasm" || deploy.execution_type_id === 1 || entryPointLower === "call") {
+    // If it has WCSPR args or involves WCSPR contract, it's a swap (wrap/unwrap)
+    if (hasWcsprArg || isWcsprContract) {
+      return { name: "Swap", type: "swap" };
+    }
+    // Generic WASM deploy - show as swap since that's what user sees
+    return { name: "Swap", type: "swap" };
+  }
   
   if (entryPointLower === "request_unstake" || entryPointLower === "unstake") {
     return { name: "Unstake", type: "unstake" };
@@ -889,11 +1003,20 @@ function getActionDetails(deploy: ApiTransaction): { name: string; type: ActionT
   if (entryPointLower.includes("swap")) {
     return { name: "Swap", type: "swap" };
   }
-  if (entryPointLower.includes("init") || entryPointLower === "call") {
+  if (entryPointLower === "deposit") {
+    return { name: "Swap", type: "swap" };
+  }
+  if (entryPointLower === "withdraw" && isWcsprContract) {
+    return { name: "Swap", type: "swap" };
+  }
+  if (entryPointLower.includes("init")) {
     return { name: "Initialize", type: "init" };
   }
-  if (entryPointLower === "wasm" || deploy.execution_type_id === 1) {
-    return { name: "Deploy Contract", type: "deploy" };
+  if (entryPointLower === "approve") {
+    return { name: "Approve", type: "swap" }; // Count approve as part of swap flow
+  }
+  if (entryPointLower.includes("swap_exact")) {
+    return { name: "DEX Swap", type: "swap" };
   }
 
   if (entryPoint) {
@@ -935,6 +1058,34 @@ export default function HistoryPage() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [newTxCount, setNewTxCount] = useState(0);
   const [seenHashes, setSeenHashes] = useState<Set<string>>(new Set());
+  const [mounted, setMounted] = useState(false);
+  const [lastUpdatedText, setLastUpdatedText] = useState("");
+
+  // Mark as mounted (client-side only)
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Update "last updated" text every 10 seconds (client-side only)
+  useEffect(() => {
+    if (!lastUpdated) return;
+    
+    const updateText = () => {
+      const now = new Date();
+      const diffMs = now.getTime() - lastUpdated.getTime();
+      const diffSec = Math.floor(diffMs / 1000);
+      const diffMin = Math.floor(diffSec / 60);
+      
+      if (diffSec < 10) setLastUpdatedText("Just now");
+      else if (diffSec < 60) setLastUpdatedText(`${diffSec}s ago`);
+      else if (diffMin < 60) setLastUpdatedText(`${diffMin}m ago`);
+      else setLastUpdatedText(lastUpdated.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }));
+    };
+    
+    updateText();
+    const interval = setInterval(updateText, 10000);
+    return () => clearInterval(interval);
+  }, [lastUpdated]);
 
   const parseTransactions = useCallback((data: ApiTransaction[]): Transaction[] => {
     return data.map((deploy: ApiTransaction) => {
@@ -1087,20 +1238,6 @@ export default function HistoryPage() {
     setFilter("all");
   };
 
-  // Format last updated time
-  const formatLastUpdated = (date: Date | null) => {
-    if (!date) return "";
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffSec = Math.floor(diffMs / 1000);
-    const diffMin = Math.floor(diffSec / 60);
-    
-    if (diffSec < 10) return "Just now";
-    if (diffSec < 60) return `${diffSec}s ago`;
-    if (diffMin < 60) return `${diffMin}m ago`;
-    return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-  };
-
   // Filter transactions
   const filteredTransactions = useMemo(() => {
     if (filter === "all") return transactions;
@@ -1188,14 +1325,15 @@ export default function HistoryPage() {
     };
   };
 
+  // Filter buttons
   const filterButtons = [
     { key: "all" as const, label: "All", count: stats.total },
     { key: "stake" as const, label: "Stakes", count: stats.stakes, icon: "📥" },
     { key: "unstake" as const, label: "Unstakes", count: stats.unstakes, icon: "📤" },
+    { key: "swap" as const, label: "Swaps", count: stats.swaps, icon: "🔄" },
     { key: "withdraw" as const, label: "Withdrawals", count: stats.withdrawals, icon: "💰" },
     { key: "claim" as const, label: "Claims", count: stats.claims, icon: "🎁" },
     { key: "bridge" as const, label: "Bridges", count: stats.bridges, icon: "🌉" },
-    { key: "swap" as const, label: "Swaps", count: stats.swaps, icon: "🔄" },
   ].filter(btn => btn.key === "all" || btn.count > 0);
 
   return (
@@ -1209,7 +1347,7 @@ export default function HistoryPage() {
                 Transaction <span className="text-[#FF0032]">History</span>
               </h1>
               <p className="text-gray-400 text-sm md:text-base max-w-xl">
-                Track all your CasperStake transactions including stakes, unstakes, bridges, and swaps.
+                Track all your CasperStake transactions including stakes, unstakes, wraps, swaps, and more.
               </p>
             </div>
             {connected && (
@@ -1258,6 +1396,15 @@ export default function HistoryPage() {
             </div>
             <p className="text-gray-400">Loading transactions...</p>
           </div>
+        ) : !mounted ? (
+          /* SSR placeholder - prevents hydration mismatch */
+          <div className="text-center py-16 md:py-24">
+            <div className="w-16 h-16 mx-auto mb-6 relative">
+              <div className="absolute inset-0 rounded-full border-4 border-[#FF0032]/20"></div>
+              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#FF0032] animate-spin"></div>
+            </div>
+            <p className="text-gray-400">Loading...</p>
+          </div>
         ) : (
           <>
             {/* New Transactions Banner */}
@@ -1293,20 +1440,14 @@ export default function HistoryPage() {
               <div className="bg-orange-500/5 border border-orange-500/20 p-3 md:p-4 rounded-xl">
                 <p className="text-gray-500 text-xs md:text-sm mb-1">📤 Unstakes</p>
                 <p className="text-xl md:text-2xl font-black text-orange-400">{stats.unstakes}</p>
-                {stats.totalUnstaked > 0 && (
-                  <p className="text-xs text-gray-500 mt-1">{stats.totalUnstaked.toFixed(2)} CSPR</p>
-                )}
               </div>
               
-              <div className="bg-purple-500/5 border border-purple-500/20 p-3 md:p-4 rounded-xl">
-                <p className="text-gray-500 text-xs md:text-sm mb-1">⏳ Unbonding</p>
-                <p className="text-xl md:text-2xl font-black text-purple-400">{pendingUnstakes?.length || 0}</p>
-                {pendingUnstakes && pendingUnstakes.length > 0 && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    {pendingUnstakes.reduce((sum, u) => sum + u.amount, 0).toFixed(2)} CSPR
-                  </p>
-                )}
-              </div>
+              {stats.swaps > 0 && (
+                <div className="bg-cyan-500/5 border border-cyan-500/20 p-3 md:p-4 rounded-xl">
+                  <p className="text-gray-500 text-xs md:text-sm mb-1">🔄 Swaps</p>
+                  <p className="text-xl md:text-2xl font-black text-cyan-400">{stats.swaps}</p>
+                </div>
+              )}
               
               <div className="bg-white/5 border border-white/10 p-3 md:p-4 rounded-xl">
                 <p className="text-gray-500 text-xs md:text-sm mb-1">Success Rate</p>
@@ -1321,7 +1462,7 @@ export default function HistoryPage() {
               </div>
             </div>
 
-            {/* Unbonding Section - Shows pending unstakes in 7-day waiting period */}
+            {/* Unbonding Section */}
             {pendingUnstakes && pendingUnstakes.length > 0 && (
               <div className="mb-6 bg-purple-500/5 border border-purple-500/20 rounded-xl overflow-hidden">
                 <div className="p-4 border-b border-purple-500/10 flex items-center justify-between">
@@ -1338,7 +1479,6 @@ export default function HistoryPage() {
                 </div>
                 <div className="divide-y divide-purple-500/10">
                   {pendingUnstakes.map((unstake, i) => {
-                    // Calculate progress (mock - use actual timestamps in production)
                     const daysRemaining = Math.max(1, 7 - i);
                     const progress = ((7 - daysRemaining) / 7) * 100;
                     const isReady = daysRemaining === 0;
@@ -1359,7 +1499,6 @@ export default function HistoryPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
-                          {/* Progress bar */}
                           <div className="hidden sm:block w-24 h-2 bg-white/10 rounded-full overflow-hidden">
                             <div 
                               className={`h-full rounded-full ${isReady ? 'bg-green-400' : 'bg-purple-400'}`}
@@ -1412,15 +1551,13 @@ export default function HistoryPage() {
               
               {/* Refresh & Last Updated */}
               <div className="ml-auto flex items-center gap-3">
-                {/* Last Updated */}
-                {lastUpdated && (
+                {lastUpdated && mounted && (
                   <div className="hidden md:flex items-center gap-2 text-xs text-gray-500">
                     <div className={`w-2 h-2 rounded-full ${isRefreshing ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'}`}></div>
-                    <span>Updated {formatLastUpdated(lastUpdated)}</span>
+                    <span>Updated {lastUpdatedText}</span>
                   </div>
                 )}
                 
-                {/* Refresh Button */}
                 <button 
                   onClick={handleManualRefresh} 
                   disabled={isRefreshing}
@@ -1435,10 +1572,10 @@ export default function HistoryPage() {
             </div>
 
             {/* Auto-refresh indicator (mobile) */}
-            {lastUpdated && (
+            {lastUpdated && mounted && (
               <div className="md:hidden flex items-center justify-center gap-2 text-xs text-gray-500 mb-4">
                 <div className={`w-2 h-2 rounded-full ${isRefreshing ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'}`}></div>
-                <span>Auto-refreshes every 30s • Updated {formatLastUpdated(lastUpdated)}</span>
+                <span>Auto-refreshes every 30s • Updated {lastUpdatedText}</span>
               </div>
             )}
 

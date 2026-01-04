@@ -117,7 +117,7 @@ import "./globals.css";
 import { WalletProvider } from "@/contexts/WalletContext";
 import Navbar from "@/components/Navbar";
 import Toast from "@/components/Toast";
-import ToastProvider from "@/components/ToastProvider";
+import ToastProvider  from "@/components/ToastProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 

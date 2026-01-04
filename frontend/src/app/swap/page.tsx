@@ -1,296 +1,1476 @@
+// "use client";
+// import { useState, useEffect, useRef } from "react";
+// import { useWallet } from "@/contexts/WalletContext";
+// import { useToast } from "@/components/ToastProvider";
+// import { RuntimeArgs, CLValueBuilder, CLPublicKey, DeployUtil, CLByteArray, CLList, CLString } from 'casper-js-sdk';
+
+// // ============================================================================
+// // CONTRACT ADDRESSES (Casper Testnet)
+// // ============================================================================
+// // const CONTRACTS = {
+// //   ROUTER: "d52d2e98554c1854fd8a9ce541a9d52dab73fd2841655513a9c8295898803ce0",
+// //   WCSPR: "083756dee38a7e3a8a7190a17623cfbc8bc107511de206f03c3dbd1af5463a45",
+// //   CSCSPR: "d08450237b5a4b6db97fb26b4dae6ae4e26262ad39a88e2079c5a9ad01783a83",
+// //   FACTORY: "5028190b8a5b6addbf3d51ee2c6ae5b913f09223d65eff9bcf5985f74ae976ec",
+// // };
+// const CONTRACTS = {
+//   ROUTER: "d52d2e98554c1854fd8a9ce541a9d52dab73fd2841655513a9c8295898803ce0",
+//   WCSPR: "4f2d1b772147b9ce3706919fe0750af6964249b0931e2115045f97e1e135e80b",  
+//   CSCSPR: "d08450237b5a4b6db97fb26b4dae6ae4e26262ad39a88e2079c5a9ad01783a83",
+//   FACTORY: "13cc83616c3fb4e6ea22ead5e61eb6319d728783ed02eab51b1f442085e605a7",
+// };
+
+// // Gas costs (in motes = CSPR * 10^9)
+// const GAS = {
+//   WRAP: 10_000_000_000,           // 10 CSPR
+//   UNWRAP: 10_000_000_000,         // 10 CSPR
+//   APPROVE: 3_000_000_000,         // 3 CSPR
+//   SWAP_TOKEN_TOKEN: 30_000_000_000, // 30 CSPR
+//   SWAP_CSPR_TOKEN: 35_000_000_000,  // 35 CSPR
+//   SWAP_TOKEN_CSPR: 35_000_000_000,  // 35 CSPR
+// };
+
+// // Token definitions
+// const TOKENS = [
+//   { symbol: "CSPR", name: "Casper", color: "#FF0032", hash: null, decimals: 9 },
+//   { symbol: "WCSPR", name: "Wrapped CSPR", color: "#FF6B35", hash: CONTRACTS.WCSPR, decimals: 9 },
+//   { symbol: "csCSPR", name: "CasperStake LST", color: "#BFFF00", hash: CONTRACTS.CSCSPR, decimals: 9 },
+// ];
+
+// // Swap route types
+// type SwapType = "wrap" | "unwrap" | "cspr_to_token" | "token_to_cspr" | "token_to_token";
+
+// interface SwapRoute {
+//   from: string;
+//   to: string;
+//   type: SwapType;
+//   fee: number;
+//   wasmFile?: string;
+//   needsPool?: boolean;
+// }
+
+// // All possible swap routes
+// const ROUTES: SwapRoute[] = [
+//   // Wrap/Unwrap (need WASM)
+//   { from: "CSPR", to: "WCSPR", type: "wrap", fee: 0, wasmFile: "wrap_cspr.wasm" },
+//   { from: "WCSPR", to: "CSPR", type: "unwrap", fee: 0, wasmFile: "unwrap_cspr.wasm" },
+  
+//   // CSPR <-> Token (need WASM + pool)
+//   { from: "CSPR", to: "csCSPR", type: "cspr_to_token", fee: 0.3, wasmFile: "swap_cspr_for_tokens.wasm", needsPool: true },
+//   { from: "csCSPR", to: "CSPR", type: "token_to_cspr", fee: 0.3, wasmFile: "swap_tokens_for_cspr.wasm", needsPool: true },
+  
+//   // Token <-> Token (no WASM needed, just pool)
+//   { from: "WCSPR", to: "csCSPR", type: "token_to_token", fee: 0.3, needsPool: true },
+//   { from: "csCSPR", to: "WCSPR", type: "token_to_token", fee: 0.3, needsPool: true },
+// ];
+
+// // WASM cache
+// interface WasmCache {
+//   wrap_cspr: Uint8Array | null;
+//   unwrap_cspr: Uint8Array | null;
+//   swap_cspr_for_tokens: Uint8Array | null;
+//   swap_tokens_for_cspr: Uint8Array | null;
+// }
+
+// export default function SwapPage() {
+//   const { connected, walletAddress, realBalance, cscsprBalance, exchangeRate, connect, setLoading } = useWallet();
+//   const { showToast } = useToast();
+
+//   const [fromToken, setFromToken] = useState(TOKENS[0]);
+//   const [toToken, setToToken] = useState(TOKENS[1]);
+//   const [fromAmount, setFromAmount] = useState("");
+//   const [toAmount, setToAmount] = useState("");
+//   const [showFrom, setShowFrom] = useState(false);
+//   const [showTo, setShowTo] = useState(false);
+//   const [swapping, setSwapping] = useState(false);
+//   const [wcsprBalance, setWcsprBalance] = useState(0);
+//   const [slippage, setSlippage] = useState(0.5);
+  
+//   // WASM loading state
+//   const [wasm, setWasm] = useState<WasmCache>({
+//     wrap_cspr: null,
+//     unwrap_cspr: null,
+//     swap_cspr_for_tokens: null,
+//     swap_tokens_for_cspr: null,
+//   });
+//   const [wasmLoading, setWasmLoading] = useState(true);
+
+//   const fromRef = useRef<HTMLDivElement>(null);
+//   const toRef = useRef<HTMLDivElement>(null);
+
+//   // Load all WASM files on mount
+//   useEffect(() => {
+//     loadAllWasm();
+//   }, []);
+
+//   const loadAllWasm = async () => {
+//     setWasmLoading(true);
+//     const wasmFiles = ['wrap_cspr', 'unwrap_cspr', 'swap_cspr_for_tokens', 'swap_tokens_for_cspr'];
+//     const loaded: WasmCache = {
+//       wrap_cspr: null,
+//       unwrap_cspr: null,
+//       swap_cspr_for_tokens: null,
+//       swap_tokens_for_cspr: null,
+//     };
+
+//     for (const name of wasmFiles) {
+//       try {
+//         const res = await fetch(`/${name}.wasm`);
+//         if (res.ok) {
+//           const buffer = await res.arrayBuffer();
+//           loaded[name as keyof WasmCache] = new Uint8Array(buffer);
+//           console.log(`✓ Loaded ${name}.wasm (${buffer.byteLength} bytes)`);
+//         } else {
+//           console.warn(`✗ ${name}.wasm not found`);
+//         }
+//       } catch (e) {
+//         console.warn(`✗ Failed to load ${name}.wasm:`, e);
+//       }
+//     }
+
+//     setWasm(loaded);
+//     setWasmLoading(false);
+//   };
+
+//   // Close dropdowns on outside click
+//   useEffect(() => {
+//     const handler = (e: MouseEvent) => {
+//       if (fromRef.current && !fromRef.current.contains(e.target as Node)) setShowFrom(false);
+//       if (toRef.current && !toRef.current.contains(e.target as Node)) setShowTo(false);
+//     };
+//     document.addEventListener("mousedown", handler);
+//     return () => document.removeEventListener("mousedown", handler);
+//   }, []);
+
+//   // Fetch WCSPR balance
+//   useEffect(() => {
+//     if (connected && walletAddress) fetchWCSPR();
+//   }, [connected, walletAddress]);
+
+//   const fetchWCSPR = async () => {
+//     try {
+//       const accHash = CLPublicKey.fromHex(walletAddress).toAccountHashStr().replace('account-hash-', '');
+//       const res = await fetch('/api/casper', {
+//         method: 'POST',
+//         headers: { 'Content-Type': 'application/json' },
+//         body: JSON.stringify({
+//           jsonrpc: '2.0', id: 1, method: 'state_get_dictionary_item',
+//           params: {
+//             state_root_hash: null,
+//             dictionary_identifier: {
+//               ContractNamedKey: { key: `hash-${CONTRACTS.WCSPR}`, dictionary_name: 'balances', dictionary_item_key: accHash }
+//             }
+//           }
+//         })
+//       });
+//       const data = await res.json();
+//       if (data.result?.stored_value?.CLValue?.parsed) {
+//         setWcsprBalance(Number(BigInt(data.result.stored_value.CLValue.parsed)) / 1e9);
+//       }
+//     } catch (e) { /* ignore */ }
+//   };
+
+//   // Find current route
+//   const route = ROUTES.find(r => r.from === fromToken.symbol && r.to === toToken.symbol);
+
+//   // Get balance for token
+//   const getBal = (s: string) => {
+//     if (s === "CSPR") return realBalance || 0;
+//     if (s === "csCSPR") return cscsprBalance || 0;
+//     if (s === "WCSPR") return wcsprBalance;
+//     return 0;
+//   };
+
+//   // Calculate output amount
+//   useEffect(() => {
+//     if (!fromAmount || !route) { setToAmount(""); return; }
+//     const inp = parseFloat(fromAmount);
+//     if (isNaN(inp) || inp <= 0) { setToAmount(""); return; }
+    
+//     let out = inp;
+//     // Apply exchange rate for csCSPR <-> CSPR
+//     if ((fromToken.symbol === "csCSPR" && toToken.symbol === "CSPR") ||
+//         (fromToken.symbol === "CSPR" && toToken.symbol === "csCSPR")) {
+//       if (fromToken.symbol === "csCSPR") {
+//         out = inp * exchangeRate;
+//       } else {
+//         out = inp / exchangeRate;
+//       }
+//     }
+//     // Apply fee
+//     out = out * (1 - route.fee / 100);
+//     setToAmount(out.toFixed(6));
+//   }, [fromAmount, route, exchangeRate]);
+
+//   // Switch tokens
+//   const switchTokens = () => {
+//     setFromToken(toToken);
+//     setToToken(fromToken);
+//     setFromAmount(toAmount);
+//   };
+
+//   // Helper: hash string to bytes
+//   const toBytes = (h: string) => Uint8Array.from(Buffer.from(h.replace("hash-", ""), 'hex'));
+
+//   // Helper: send deploy to RPC
+//   const sendDeploy = async (deployData: any): Promise<string> => {
+//     const res = await fetch('/api/casper', {
+//       method: 'POST',
+//       headers: { 'Content-Type': 'application/json' },
+//       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'account_put_deploy', params: { deploy: deployData } })
+//     });
+//     const j = await res.json();
+//     console.log("RPC Response:", j);
+//     if (j.error) throw new Error(j.error.message || JSON.stringify(j.error));
+//     return j.result?.deploy_hash;
+//   };
+
+//   // Check if route can execute
+//   const canExecute = (): { ok: boolean; reason?: string } => {
+//     if (!route) return { ok: false, reason: "No route available" };
+//     if (!fromAmount || parseFloat(fromAmount) <= 0) return { ok: false, reason: "Enter amount" };
+//     if (parseFloat(fromAmount) > getBal(fromToken.symbol)) return { ok: false, reason: "Insufficient balance" };
+    
+//     // Check WASM availability
+//     if (route.wasmFile) {
+//       const wasmKey = route.wasmFile.replace('.wasm', '') as keyof WasmCache;
+//       if (!wasm[wasmKey]) return { ok: false, reason: `Missing ${route.wasmFile}` };
+//     }
+    
+//     // For now, assume pools exist (in production, you'd check)
+//     return { ok: true };
+//   };
+
+//   // MAIN SWAP FUNCTION
+//   const doSwap = async () => {
+//     if (!connected) { connect(); return; }
+    
+//     const check = canExecute();
+//     if (!check.ok) {
+//       showToast("error", "Cannot Swap", check.reason || "Unknown error");
+//       return;
+//     }
+
+//     setSwapping(true);
+//     setLoading(true);
+
+//     const amount = parseFloat(fromAmount);
+//     const amountMotes = BigInt(Math.floor(amount * 1e9));
+//     const minOutput = BigInt(Math.floor(parseFloat(toAmount) * (1 - slippage / 100) * 1e9));
+//     const deadline = BigInt(Date.now() + 20 * 60 * 1000);
+
+//     try {
+//       const provider = (window as any).CasperWalletProvider?.();
+//       if (!provider) throw new Error("Casper Wallet not found");
+
+//       let deploy;
+//       let successMsg = "";
+
+//       switch (route!.type) {
+//         // ============================================
+//         // WRAP: CSPR → WCSPR
+//         // ============================================
+//         case "wrap": {
+//           showToast("info", "Wrapping CSPR", "Creating transaction...", undefined, 0);
+          
+//           const args = RuntimeArgs.fromMap({
+//             "wcspr_hash": new CLByteArray(toBytes(CONTRACTS.WCSPR)),
+//             "amount": CLValueBuilder.u512(amountMotes.toString())
+//           });
+
+//           // Payment includes gas + amount to wrap
+//           const payment = GAS.WRAP + Number(amountMotes);
+
+//           deploy = DeployUtil.makeDeploy(
+//             new DeployUtil.DeployParams(CLPublicKey.fromHex(walletAddress), "casper-test", 1, 1800000),
+//             DeployUtil.ExecutableDeployItem.newModuleBytes(wasm.wrap_cspr!, args),
+//             DeployUtil.standardPayment(payment)
+//           );
+//           successMsg = `Wrapped ${amount} CSPR → WCSPR`;
+//           break;
+//         }
+
+//         // ============================================
+//         // UNWRAP: WCSPR → CSPR
+//         // ============================================
+//         case "unwrap": {
+//           showToast("info", "Unwrapping WCSPR", "Creating transaction...", undefined, 0);
+          
+//           const args = RuntimeArgs.fromMap({
+//             "wcspr_hash": new CLByteArray(toBytes(CONTRACTS.WCSPR)),
+//             "amount": CLValueBuilder.u512(amountMotes.toString())
+//           });
+
+//           deploy = DeployUtil.makeDeploy(
+//             new DeployUtil.DeployParams(CLPublicKey.fromHex(walletAddress), "casper-test", 1, 1800000),
+//             DeployUtil.ExecutableDeployItem.newModuleBytes(wasm.unwrap_cspr!, args),
+//             DeployUtil.standardPayment(GAS.UNWRAP)
+//           );
+//           successMsg = `Unwrapped ${amount} WCSPR → CSPR`;
+//           break;
+//         }
+
+//         // ============================================
+//         // CSPR → Token (via DEX)
+//         // ============================================
+//         case "cspr_to_token": {
+//           showToast("info", "Swapping CSPR", "Creating transaction...", undefined, 0);
+          
+//           // Path: WCSPR -> output token
+//           const path = [`hash-${CONTRACTS.WCSPR}`, `hash-${toToken.hash}`];
+          
+//           const args = RuntimeArgs.fromMap({
+//             "router_hash": new CLByteArray(toBytes(CONTRACTS.ROUTER)),
+//             "amount_in": CLValueBuilder.u512(amountMotes.toString()),
+//             "amount_out_min": CLValueBuilder.u256(minOutput.toString()),
+//             "path": CLValueBuilder.list(path.map(p => CLValueBuilder.string(p))),
+//             "deadline": CLValueBuilder.u256(deadline.toString())
+//           });
+
+//           // Payment includes gas + amount to swap
+//           const payment = GAS.SWAP_CSPR_TOKEN + Number(amountMotes);
+
+//           deploy = DeployUtil.makeDeploy(
+//             new DeployUtil.DeployParams(CLPublicKey.fromHex(walletAddress), "casper-test", 1, 1800000),
+//             DeployUtil.ExecutableDeployItem.newModuleBytes(wasm.swap_cspr_for_tokens!, args),
+//             DeployUtil.standardPayment(payment)
+//           );
+//           successMsg = `Swapped ${amount} CSPR → ${toToken.symbol}`;
+//           break;
+//         }
+
+//         // ============================================
+//         // Token → CSPR (via DEX)
+//         // ============================================
+//         case "token_to_cspr": {
+//           // Step 1: Approve token spending
+//           showToast("info", "Step 1/2: Approve", "Approving token...", undefined, 0);
+          
+//           const approveArgs = RuntimeArgs.fromMap({
+//             "spender": CLValueBuilder.key(new CLByteArray(toBytes(CONTRACTS.ROUTER))),
+//             "amount": CLValueBuilder.u256(amountMotes.toString())
+//           });
+
+//           const approveDeploy = DeployUtil.makeDeploy(
+//             new DeployUtil.DeployParams(CLPublicKey.fromHex(walletAddress), "casper-test", 1, 1800000),
+//             DeployUtil.ExecutableDeployItem.newStoredContractByHash(toBytes(fromToken.hash!), "approve", approveArgs),
+//             DeployUtil.standardPayment(GAS.APPROVE)
+//           );
+
+//           const approveJson = DeployUtil.deployToJson(approveDeploy);
+//           const approveSig = await provider.sign(JSON.stringify(approveJson), walletAddress);
+//           if (approveSig.cancelled) throw new Error("Cancelled");
+
+//           const approveData = approveJson.deploy as any;
+//           approveData.approvals = [{ signer: walletAddress, signature: walletAddress.substring(0, 2) + approveSig.signatureHex }];
+//           await sendDeploy(approveData);
+
+//           showToast("info", "Waiting", "Approval processing (~15s)...", undefined, 0);
+//           await new Promise(r => setTimeout(r, 15000));
+
+//           // Step 2: Swap via session WASM
+//           showToast("info", "Step 2/2: Swap", "Executing swap...", undefined, 0);
+          
+//           // Path: input token -> WCSPR
+//           const path = [`hash-${fromToken.hash}`, `hash-${CONTRACTS.WCSPR}`];
+          
+//           const swapArgs = RuntimeArgs.fromMap({
+//             "router_hash": new CLByteArray(toBytes(CONTRACTS.ROUTER)),
+//             "amount_in": CLValueBuilder.u256(amountMotes.toString()),
+//             "amount_out_min": CLValueBuilder.u256(minOutput.toString()),
+//             "path": CLValueBuilder.list(path.map(p => CLValueBuilder.string(p))),
+//             "deadline": CLValueBuilder.u256(deadline.toString())
+//           });
+
+//           deploy = DeployUtil.makeDeploy(
+//             new DeployUtil.DeployParams(CLPublicKey.fromHex(walletAddress), "casper-test", 1, 1800000),
+//             DeployUtil.ExecutableDeployItem.newModuleBytes(wasm.swap_tokens_for_cspr!, swapArgs),
+//             DeployUtil.standardPayment(GAS.SWAP_TOKEN_CSPR)
+//           );
+//           successMsg = `Swapped ${amount} ${fromToken.symbol} → CSPR`;
+//           break;
+//         }
+
+//         // ============================================
+//         // Token → Token (via DEX, no WASM needed)
+//         // ============================================
+//         case "token_to_token": {
+//           // Step 1: Approve token spending
+//           showToast("info", "Step 1/2: Approve", "Approving token...", undefined, 0);
+          
+//           const approveArgs = RuntimeArgs.fromMap({
+//             "spender": CLValueBuilder.key(new CLByteArray(toBytes(CONTRACTS.ROUTER))),
+//             "amount": CLValueBuilder.u256(amountMotes.toString())
+//           });
+
+//           const approveDeploy = DeployUtil.makeDeploy(
+//             new DeployUtil.DeployParams(CLPublicKey.fromHex(walletAddress), "casper-test", 1, 1800000),
+//             DeployUtil.ExecutableDeployItem.newStoredContractByHash(toBytes(fromToken.hash!), "approve", approveArgs),
+//             DeployUtil.standardPayment(GAS.APPROVE)
+//           );
+
+//           const approveJson = DeployUtil.deployToJson(approveDeploy);
+//           const approveSig = await provider.sign(JSON.stringify(approveJson), walletAddress);
+//           if (approveSig.cancelled) throw new Error("Cancelled");
+
+//           const approveData = approveJson.deploy as any;
+//           approveData.approvals = [{ signer: walletAddress, signature: walletAddress.substring(0, 2) + approveSig.signatureHex }];
+//           await sendDeploy(approveData);
+
+//           showToast("info", "Waiting", "Approval processing (~15s)...", undefined, 0);
+//           await new Promise(r => setTimeout(r, 15000));
+
+//           // Step 2: Swap via Router contract directly
+//           showToast("info", "Step 2/2: Swap", "Executing swap...", undefined, 0);
+          
+//           const path = [`hash-${fromToken.hash}`, `hash-${toToken.hash}`];
+          
+//           const swapArgs = RuntimeArgs.fromMap({
+//             "amount_in": CLValueBuilder.u256(amountMotes.toString()),
+//             "amount_out_min": CLValueBuilder.u256(minOutput.toString()),
+//             "path": CLValueBuilder.list(path.map(p => CLValueBuilder.string(p))),
+//             "to": CLValueBuilder.key(CLPublicKey.fromHex(walletAddress)),
+//             "deadline": CLValueBuilder.u256(deadline.toString())
+//           });
+
+//           deploy = DeployUtil.makeDeploy(
+//             new DeployUtil.DeployParams(CLPublicKey.fromHex(walletAddress), "casper-test", 1, 1800000),
+//             DeployUtil.ExecutableDeployItem.newStoredContractByHash(toBytes(CONTRACTS.ROUTER), "swap_exact_tokens_for_tokens", swapArgs),
+//             DeployUtil.standardPayment(GAS.SWAP_TOKEN_TOKEN)
+//           );
+//           successMsg = `Swapped ${amount} ${fromToken.symbol} → ${toToken.symbol}`;
+//           break;
+//         }
+
+//         default:
+//           throw new Error("Unknown swap type");
+//       }
+
+//       // Sign and send
+//       showToast("info", "Sign Transaction", "Please approve in wallet...", undefined, 0);
+      
+//       const deployJson = DeployUtil.deployToJson(deploy);
+//       console.log("Deploy:", JSON.stringify(deployJson, null, 2));
+      
+//       const sig = await provider.sign(JSON.stringify(deployJson), walletAddress);
+//       if (sig.cancelled) throw new Error("Cancelled");
+
+//       showToast("info", "Broadcasting", "Submitting to network...", undefined, 0);
+      
+//       const deployData = deployJson.deploy as any;
+//       deployData.approvals = [{ signer: walletAddress, signature: walletAddress.substring(0, 2) + sig.signatureHex }];
+      
+//       const hash = await sendDeploy(deployData);
+//       showToast("success", "Success!", successMsg, hash, 8000);
+
+//       setFromAmount("");
+//       setToAmount("");
+//       setTimeout(() => { fetchWCSPR(); }, 20000);
+
+//     } catch (e: any) {
+//       console.error("Swap error:", e);
+//       if (e.message !== "Cancelled") {
+//         showToast("error", "Swap Failed", e.message);
+//       }
+//     }
+
+//     setSwapping(false);
+//     setLoading(false);
+//   };
+
+//   // Token icon component
+//   const TokenIcon = ({ token, size = 28 }: { token: typeof TOKENS[0], size?: number }) => (
+//     <div 
+//       className="rounded-full flex items-center justify-center font-bold text-black"
+//       style={{ width: size, height: size, backgroundColor: token.color, fontSize: size * 0.4 }}
+//     >
+//       {token.symbol[0]}
+//     </div>
+//   );
+
+//   const check = canExecute();
+
+//   return (
+//     <div className="min-h-screen bg-[#0D0D0D]">
+//       <div className="fixed inset-0 bg-gradient-to-br from-[#FF0032]/5 via-transparent to-[#BFFF00]/5 pointer-events-none" />
+
+//       {/* Header */}
+//       <header className="relative border-b border-white/5">
+//         <div className="max-w-7xl mx-auto px-6 py-8">
+//           <h1 className="text-3xl font-bold text-white">Swap</h1>
+//           <p className="text-white/50 text-sm mt-1">Trade tokens via CasperSwap DEX</p>
+//         </div>
+//       </header>
+
+//       <main className="relative max-w-md mx-auto px-4 py-8">
+//         {/* WASM Status */}
+//         <div className={`rounded-2xl p-4 mb-6 border ${
+//           wasmLoading ? 'bg-blue-500/10 border-blue-500/20' :
+//           Object.values(wasm).every(w => w !== null) ? 'bg-green-500/10 border-green-500/20' :
+//           'bg-orange-500/10 border-orange-500/20'
+//         }`}>
+//           <p className={`font-medium text-sm mb-3 ${
+//             wasmLoading ? 'text-blue-400' :
+//             Object.values(wasm).every(w => w !== null) ? 'text-green-400' : 'text-orange-400'
+//           }`}>
+//             {wasmLoading ? 'Loading WASM modules...' :
+//              Object.values(wasm).every(w => w !== null) ? '✓ All WASM modules loaded' : 
+//              'Some WASM modules missing'}
+//           </p>
+//           <div className="grid grid-cols-2 gap-2 text-xs">
+//             {(['wrap_cspr', 'unwrap_cspr', 'swap_cspr_for_tokens', 'swap_tokens_for_cspr'] as const).map(name => (
+//               <div key={name} className="flex items-center gap-2">
+//                 <span className={`w-2 h-2 rounded-full ${wasm[name] ? 'bg-green-500' : 'bg-orange-500'}`}></span>
+//                 <span className="text-white/60 truncate">{name}</span>
+//               </div>
+//             ))}
+//           </div>
+//         </div>
+
+//         {/* Swap Card */}
+//         <div className="bg-[#141414] border border-white/5 rounded-3xl p-4">
+//           {/* From Section */}
+//           <div className="flex items-center justify-between mb-2">
+//             <span className="text-white/50 text-sm">You pay</span>
+//             <span className="text-white/30 text-xs">Slippage: {slippage}%</span>
+//           </div>
+//           <div className="bg-[#0D0D0D] rounded-2xl p-4">
+//             <div className="flex items-center gap-3">
+//               <div className="relative" ref={fromRef}>
+//                 <button 
+//                   onClick={() => setShowFrom(!showFrom)} 
+//                   className="flex items-center gap-2 bg-white/5 hover:bg-white/10 pl-2 pr-3 py-2 rounded-full transition-colors"
+//                 >
+//                   <TokenIcon token={fromToken} />
+//                   <span className="text-white font-semibold">{fromToken.symbol}</span>
+//                   <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+//                   </svg>
+//                 </button>
+//                 {showFrom && (
+//                   <div className="absolute left-0 top-full mt-2 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl overflow-hidden z-50 shadow-xl">
+//                     {TOKENS.filter(t => t.symbol !== toToken.symbol).map(t => (
+//                       <button 
+//                         key={t.symbol} 
+//                         onClick={() => { setFromToken(t); setShowFrom(false); setFromAmount(""); }} 
+//                         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors"
+//                       >
+//                         <TokenIcon token={t} size={32} />
+//                         <div className="text-left">
+//                           <p className="text-white font-medium">{t.symbol}</p>
+//                           <p className="text-white/40 text-xs">{t.name}</p>
+//                         </div>
+//                         <span className="ml-auto text-white/40 text-sm">{getBal(t.symbol).toFixed(2)}</span>
+//                       </button>
+//                     ))}
+//                   </div>
+//                 )}
+//               </div>
+//               <input 
+//                 type="number" 
+//                 value={fromAmount} 
+//                 onChange={e => setFromAmount(e.target.value)} 
+//                 placeholder="0" 
+//                 className="flex-1 bg-transparent text-right text-2xl font-medium text-white placeholder-white/20 focus:outline-none"
+//               />
+//             </div>
+//             <div className="flex justify-between mt-3 pt-3 border-t border-white/5 text-sm">
+//               <span className="text-white/40">Balance: {getBal(fromToken.symbol).toFixed(4)}</span>
+//               <div className="flex gap-1">
+//                 {[25, 50, 75].map(p => (
+//                   <button 
+//                     key={p}
+//                     onClick={() => setFromAmount((getBal(fromToken.symbol) * p / 100).toFixed(6))} 
+//                     className="px-2 py-1 text-xs text-white/40 hover:text-white hover:bg-white/5 rounded transition-colors"
+//                   >
+//                     {p}%
+//                   </button>
+//                 ))}
+//                 <button 
+//                   onClick={() => setFromAmount(Math.max(0, getBal(fromToken.symbol) - (fromToken.symbol === "CSPR" ? 15 : 0)).toFixed(6))} 
+//                   className="px-2 py-1 text-xs text-[#FF0032] hover:bg-[#FF0032]/10 rounded font-medium transition-colors"
+//                 >
+//                   MAX
+//                 </button>
+//               </div>
+//             </div>
+//           </div>
+
+//           {/* Switch Button */}
+//           <div className="flex justify-center -my-2 relative z-10">
+//             <button 
+//               onClick={switchTokens} 
+//               className="w-10 h-10 bg-[#1a1a1a] border-4 border-[#141414] rounded-xl flex items-center justify-center hover:bg-[#252525] transition-colors"
+//             >
+//               <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+//               </svg>
+//             </button>
+//           </div>
+
+//           {/* To Section */}
+//           <div className="mb-2 mt-3">
+//             <span className="text-white/50 text-sm">You receive</span>
+//           </div>
+//           <div className="bg-[#0D0D0D] rounded-2xl p-4">
+//             <div className="flex items-center gap-3">
+//               <div className="relative" ref={toRef}>
+//                 <button 
+//                   onClick={() => setShowTo(!showTo)} 
+//                   className="flex items-center gap-2 bg-white/5 hover:bg-white/10 pl-2 pr-3 py-2 rounded-full transition-colors"
+//                 >
+//                   <TokenIcon token={toToken} />
+//                   <span className="text-white font-semibold">{toToken.symbol}</span>
+//                   <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+//                   </svg>
+//                 </button>
+//                 {showTo && (
+//                   <div className="absolute left-0 top-full mt-2 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl overflow-hidden z-50 shadow-xl">
+//                     {TOKENS.filter(t => t.symbol !== fromToken.symbol).map(t => (
+//                       <button 
+//                         key={t.symbol} 
+//                         onClick={() => { setToToken(t); setShowTo(false); }} 
+//                         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors"
+//                       >
+//                         <TokenIcon token={t} size={32} />
+//                         <div className="text-left">
+//                           <p className="text-white font-medium">{t.symbol}</p>
+//                           <p className="text-white/40 text-xs">{t.name}</p>
+//                         </div>
+//                         <span className="ml-auto text-white/40 text-sm">{getBal(t.symbol).toFixed(2)}</span>
+//                       </button>
+//                     ))}
+//                   </div>
+//                 )}
+//               </div>
+//               <p className={`flex-1 text-right text-2xl font-medium ${toAmount ? 'text-white' : 'text-white/20'}`}>
+//                 {toAmount || "0"}
+//               </p>
+//             </div>
+//             <div className="mt-3 pt-3 border-t border-white/5 text-sm">
+//               <span className="text-white/40">Balance: {getBal(toToken.symbol).toFixed(4)}</span>
+//             </div>
+//           </div>
+//         </div>
+
+//         {/* Route Info */}
+//         {route && fromAmount && parseFloat(fromAmount) > 0 && (
+//           <div className={`mt-3 p-4 rounded-2xl border ${check.ok ? 'bg-[#141414] border-white/5' : 'bg-orange-500/10 border-orange-500/20'}`}>
+//             {!check.ok && (
+//               <p className="text-orange-400 text-sm mb-3">⚠️ {check.reason}</p>
+//             )}
+//             <div className="space-y-2 text-sm">
+//               <div className="flex justify-between">
+//                 <span className="text-white/50">Route Type</span>
+//                 <span className="text-white capitalize">{route.type.replace(/_/g, ' ')}</span>
+//               </div>
+//               <div className="flex justify-between">
+//                 <span className="text-white/50">Fee</span>
+//                 <span className="text-white">{route.fee}%</span>
+//               </div>
+//               <div className="flex justify-between">
+//                 <span className="text-white/50">Min Received</span>
+//                 <span className="text-white">{(parseFloat(toAmount) * (1 - slippage / 100)).toFixed(6)} {toToken.symbol}</span>
+//               </div>
+//               {route.wasmFile && (
+//                 <div className="flex justify-between">
+//                   <span className="text-white/50">WASM</span>
+//                   <span className={wasm[route.wasmFile.replace('.wasm', '') as keyof WasmCache] ? 'text-green-400' : 'text-orange-400'}>
+//                     {route.wasmFile}
+//                   </span>
+//                 </div>
+//               )}
+//             </div>
+//           </div>
+//         )}
+
+//         {/* Swap Button */}
+//         <button
+//           onClick={doSwap}
+//           disabled={swapping || wasmLoading || !connected || !check.ok}
+//           className={`w-full mt-4 py-4 rounded-2xl font-semibold text-lg transition-all ${
+//             !connected ? "bg-[#FF0032] text-white hover:bg-[#FF0032]/90" :
+//             swapping || wasmLoading ? "bg-white/10 text-white/50 cursor-wait" :
+//             check.ok ? "bg-[#FF0032] text-white hover:bg-[#FF0032]/90 shadow-lg shadow-[#FF0032]/25" :
+//             "bg-orange-500/20 text-orange-400 cursor-not-allowed"
+//           }`}
+//         >
+//           {swapping ? "Processing..." :
+//            wasmLoading ? "Loading WASM..." :
+//            !connected ? "Connect Wallet" :
+//            !check.ok ? (check.reason || "Cannot Swap") :
+//            `Swap ${fromToken.symbol} → ${toToken.symbol}`}
+//         </button>
+
+//         {/* Navigation Links */}
+//         <div className="mt-8 flex justify-center gap-6 text-sm">
+//           <a href="/stake" className="text-[#FF0032] hover:underline">← Stake</a>
+//           <a href="/history" className="text-white/50 hover:text-white">History</a>
+//           <a href="https://testnet.casperswap.xyz/" target="_blank" className="text-blue-400 hover:underline">CasperSwap →</a>
+//         </div>
+
+//         {/* Contracts Info */}
+//         <div className="mt-8 p-4 bg-white/5 rounded-xl text-xs">
+//           <p className="text-white/50 mb-2">Contracts (Testnet)</p>
+//           <div className="space-y-1 font-mono text-white/30">
+//             <p>Router: {CONTRACTS.ROUTER.slice(0, 16)}...</p>
+//             <p>WCSPR: {CONTRACTS.WCSPR.slice(0, 16)}...</p>
+//             <p>csCSPR: {CONTRACTS.CSCSPR.slice(0, 16)}...</p>
+//           </div>
+//         </div>
+//       </main>
+//     </div>
+//   );
+// }
+
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useWallet } from "@/contexts/WalletContext";
+import { useToast } from "@/components/ToastProvider";
+import { RuntimeArgs, CLValueBuilder, CLPublicKey, DeployUtil, CLByteArray } from 'casper-js-sdk';
+
+// ============================================================================
+// CONTRACT ADDRESSES (Casper Testnet)
+// ============================================================================
+const CONTRACTS = {
+  ROUTER: "d52d2e98554c1854fd8a9ce541a9d52dab73fd2841655513a9c8295898803ce0",
+  WCSPR: "4f2d1b772147b9ce3706919fe0750af6964249b0931e2115045f97e1e135e80b",  
+  CSCSPR: "d08450237b5a4b6db97fb26b4dae6ae4e26262ad39a88e2079c5a9ad01783a83",
+  FACTORY: "13cc83616c3fb4e6ea22ead5e61eb6319d728783ed02eab51b1f442085e605a7",
+};
+
+// Gas costs (in motes = CSPR * 10^9)
+const GAS = {
+  WRAP: 10_000_000_000,           // 10 CSPR
+  UNWRAP: 10_000_000_000,         // 10 CSPR
+  APPROVE: 3_000_000_000,         // 3 CSPR
+  SWAP_TOKEN_TOKEN: 30_000_000_000, // 30 CSPR
+  SWAP_CSPR_TOKEN: 35_000_000_000,  // 35 CSPR
+  SWAP_TOKEN_CSPR: 35_000_000_000,  // 35 CSPR
+};
+
+// Token definitions
+const TOKENS = [
+  { symbol: "CSPR", name: "Casper", color: "#FF0032", hash: null, decimals: 9 },
+  { symbol: "WCSPR", name: "Wrapped CSPR", color: "#FF6B35", hash: CONTRACTS.WCSPR, decimals: 9 },
+  { symbol: "csCSPR", name: "CasperStake LST", color: "#BFFF00", hash: CONTRACTS.CSCSPR, decimals: 9 },
+];
+
+// Swap route types
+type SwapType = "wrap" | "unwrap" | "cspr_to_token" | "token_to_cspr" | "token_to_token";
+
+interface SwapRoute {
+  from: string;
+  to: string;
+  type: SwapType;
+  fee: number;
+  wasmFile?: string;
+  needsPool?: boolean;
+}
+
+// All possible swap routes
+const ROUTES: SwapRoute[] = [
+  // Wrap/Unwrap (need WASM)
+  { from: "CSPR", to: "WCSPR", type: "wrap", fee: 0, wasmFile: "wrap_cspr.wasm" },
+  { from: "WCSPR", to: "CSPR", type: "unwrap", fee: 0, wasmFile: "unwrap_cspr.wasm" },
+  
+  // CSPR <-> Token (need WASM + pool)
+  { from: "CSPR", to: "csCSPR", type: "cspr_to_token", fee: 0.3, wasmFile: "swap_cspr_for_tokens.wasm", needsPool: true },
+  { from: "csCSPR", to: "CSPR", type: "token_to_cspr", fee: 0.3, wasmFile: "swap_tokens_for_cspr.wasm", needsPool: true },
+  
+  // Token <-> Token (no WASM needed, just pool)
+  { from: "WCSPR", to: "csCSPR", type: "token_to_token", fee: 0.3, needsPool: true },
+  { from: "csCSPR", to: "WCSPR", type: "token_to_token", fee: 0.3, needsPool: true },
+];
+
+// WASM cache
+interface WasmCache {
+  wrap_cspr: Uint8Array | null;
+  unwrap_cspr: Uint8Array | null;
+  swap_cspr_for_tokens: Uint8Array | null;
+  swap_tokens_for_cspr: Uint8Array | null;
+}
 
 export default function SwapPage() {
-  const { connected, realBalance, cscsprBalance, connect, showMessage, loading: walletLoading } = useWallet();
+  const { connected, walletAddress, realBalance, cscsprBalance, exchangeRate, connect, setLoading } = useWallet();
+  const { showToast } = useToast();
 
-  const [swapFrom, setSwapFrom] = useState("CSPR");
-  const [swapTo, setSwapTo] = useState("csCSPR");
-  const [swapAmount, setSwapAmount] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [fromToken, setFromToken] = useState(TOKENS[0]);
+  const [toToken, setToToken] = useState(TOKENS[1]);
+  const [fromAmount, setFromAmount] = useState("");
+  const [toAmount, setToAmount] = useState("");
+  const [showFrom, setShowFrom] = useState(false);
+  const [showTo, setShowTo] = useState(false);
+  const [swapping, setSwapping] = useState(false);
+  const [wcsprBalance, setWcsprBalance] = useState(0);
+  const [slippage, setSlippage] = useState(0.5);
+  
+  // WASM loading state
+  const [wasm, setWasm] = useState<WasmCache>({
+    wrap_cspr: null,
+    unwrap_cspr: null,
+    swap_cspr_for_tokens: null,
+    swap_tokens_for_cspr: null,
+  });
+  const [wasmLoading, setWasmLoading] = useState(true);
 
-  const tokens = [
-    { symbol: "CSPR", name: "Casper", icon: "🔴", rate: 1 },
-    { symbol: "csCSPR", name: "CasperStake LST", icon: "🟢", rate: 1.0523 },
-    { symbol: "stCSPR", name: "StakeVue LST", icon: "🔵", rate: 1.0489 },
-    { symbol: "lCSPR", name: "Casper Liquid LST", icon: "🟣", rate: 1.0501 },
-  ];
+  const fromRef = useRef<HTMLDivElement>(null);
+  const toRef = useRef<HTMLDivElement>(null);
 
-  const getRate = (from: string, to: string) => {
-    const fromToken = tokens.find(t => t.symbol === from);
-    const toToken = tokens.find(t => t.symbol === to);
-    if (!fromToken || !toToken) return 1;
-    return toToken.rate / fromToken.rate;
+  // Load all WASM files on mount
+  useEffect(() => {
+    loadAllWasm();
+  }, []);
+
+  const loadAllWasm = async () => {
+    setWasmLoading(true);
+    const wasmFiles = ['wrap_cspr', 'unwrap_cspr', 'swap_cspr_for_tokens', 'swap_tokens_for_cspr'];
+    const loaded: WasmCache = {
+      wrap_cspr: null,
+      unwrap_cspr: null,
+      swap_cspr_for_tokens: null,
+      swap_tokens_for_cspr: null,
+    };
+
+    for (const name of wasmFiles) {
+      try {
+        const res = await fetch(`/${name}.wasm`);
+        if (res.ok) {
+          const buffer = await res.arrayBuffer();
+          loaded[name as keyof WasmCache] = new Uint8Array(buffer);
+          console.log(`✓ Loaded ${name}.wasm (${buffer.byteLength} bytes)`);
+        } else {
+          console.warn(`✗ ${name}.wasm not found`);
+        }
+      } catch (e) {
+        console.warn(`✗ Failed to load ${name}.wasm:`, e);
+      }
+    }
+
+    setWasm(loaded);
+    setWasmLoading(false);
   };
 
-  const getBalance = (symbol: string) => {
-    if (symbol === "CSPR") return realBalance || 0;
-    if (symbol === "csCSPR") return cscsprBalance;
-    return 0; // Other tokens not held
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (fromRef.current && !fromRef.current.contains(e.target as Node)) setShowFrom(false);
+      if (toRef.current && !toRef.current.contains(e.target as Node)) setShowTo(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Fetch WCSPR balance
+  useEffect(() => {
+    if (connected && walletAddress) fetchWCSPR();
+  }, [connected, walletAddress]);
+
+  const fetchWCSPR = async () => {
+    try {
+      const accHash = CLPublicKey.fromHex(walletAddress).toAccountHashStr().replace('account-hash-', '');
+      const res = await fetch('/api/casper', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0', id: 1, method: 'state_get_dictionary_item',
+          params: {
+            state_root_hash: null,
+            dictionary_identifier: {
+              ContractNamedKey: { key: `hash-${CONTRACTS.WCSPR}`, dictionary_name: 'balances', dictionary_item_key: accHash }
+            }
+          }
+        })
+      });
+      const data = await res.json();
+      if (data.result?.stored_value?.CLValue?.parsed) {
+        setWcsprBalance(Number(BigInt(data.result.stored_value.CLValue.parsed)) / 1e9);
+      }
+    } catch (e) { /* ignore */ }
   };
 
-  const handleSwap = async () => {
-    if (!swapAmount || parseFloat(swapAmount) <= 0) {
-      showMessage("error", "❌ Enter valid amount");
-      return;
+  // Find current route
+  const route = ROUTES.find(r => r.from === fromToken.symbol && r.to === toToken.symbol);
+
+  // Get balance for token
+  const getBal = (s: string) => {
+    if (s === "CSPR") return realBalance || 0;
+    if (s === "csCSPR") return cscsprBalance || 0;
+    if (s === "WCSPR") return wcsprBalance;
+    return 0;
+  };
+
+  // Calculate output amount
+  useEffect(() => {
+    if (!fromAmount || !route) { setToAmount(""); return; }
+    const inp = parseFloat(fromAmount);
+    if (isNaN(inp) || inp <= 0) { setToAmount(""); return; }
+    
+    let out = inp;
+    // Apply exchange rate for csCSPR <-> CSPR
+    if ((fromToken.symbol === "csCSPR" && toToken.symbol === "CSPR") ||
+        (fromToken.symbol === "CSPR" && toToken.symbol === "csCSPR")) {
+      if (fromToken.symbol === "csCSPR") {
+        out = inp * exchangeRate;
+      } else {
+        out = inp / exchangeRate;
+      }
+    }
+    // Apply fee
+    out = out * (1 - route.fee / 100);
+    setToAmount(out.toFixed(6));
+  }, [fromAmount, route, exchangeRate, fromToken.symbol, toToken.symbol]);
+
+  // Switch tokens
+  const switchTokens = () => {
+    setFromToken(toToken);
+    setToToken(fromToken);
+    setFromAmount(toAmount);
+  };
+
+  // Helper: hash string to bytes
+  const toBytes = (h: string) => Uint8Array.from(Buffer.from(h.replace("hash-", ""), 'hex'));
+
+  // Helper: send deploy to RPC
+  const sendDeploy = async (deployData: any): Promise<string> => {
+    const res = await fetch('/api/casper', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'account_put_deploy', params: { deploy: deployData } })
+    });
+    const j = await res.json();
+    console.log("RPC Response:", j);
+    if (j.error) throw new Error(j.error.message || JSON.stringify(j.error));
+    return j.result?.deploy_hash;
+  };
+
+  // Check if route can execute
+  const canExecute = (): { ok: boolean; reason?: string } => {
+    if (!route) return { ok: false, reason: "No route available" };
+    if (!fromAmount || parseFloat(fromAmount) <= 0) return { ok: false, reason: "Enter amount" };
+    if (parseFloat(fromAmount) > getBal(fromToken.symbol)) return { ok: false, reason: "Insufficient balance" };
+    
+    // Check WASM availability
+    if (route.wasmFile) {
+      const wasmKey = route.wasmFile.replace('.wasm', '') as keyof WasmCache;
+      if (!wasm[wasmKey]) return { ok: false, reason: `Missing ${route.wasmFile}` };
     }
     
-    setLoading(true);
-    showMessage("success", `🔄 Swapping ${swapAmount} ${swapFrom} for ${(parseFloat(swapAmount) * getRate(swapFrom, swapTo)).toFixed(4)} ${swapTo}...`);
-    
-    // Simulate swap
-    setTimeout(() => {
-      showMessage("success", `✅ Swap completed! Received ${(parseFloat(swapAmount) * getRate(swapFrom, swapTo)).toFixed(4)} ${swapTo}`);
-      setSwapAmount("");
-      setLoading(false);
-    }, 2000);
+    return { ok: true };
   };
 
-  const switchTokens = () => {
-    const temp = swapFrom;
-    setSwapFrom(swapTo);
-    setSwapTo(temp);
+  // MAIN SWAP FUNCTION - FIXED: Prevents dual toasts
+  const doSwap = async () => {
+    if (!connected) { connect(); return; }
+    
+    const check = canExecute();
+    if (!check.ok) {
+      showToast("error", "Cannot Swap", check.reason || "Unknown error");
+      return;
+    }
+
+    setSwapping(true);
+    setLoading(true);
+
+    const amount = parseFloat(fromAmount);
+    const amountMotes = BigInt(Math.floor(amount * 1e9));
+    const minOutput = BigInt(Math.floor(parseFloat(toAmount) * (1 - slippage / 100) * 1e9));
+    const deadline = BigInt(Date.now() + 20 * 60 * 1000);
+
+    // Track if we've already shown a final result
+    let hasShownResult = false;
+
+    const showFinalResult = (type: "success" | "error", title: string, message: string, hash?: string) => {
+      if (hasShownResult) return; // Prevent duplicate toasts
+      hasShownResult = true;
+      showToast(type, title, message, hash, type === "success" ? 8000 : 5000);
+    };
+
+    const cleanup = () => {
+      setSwapping(false);
+      setLoading(false);
+    };
+
+    try {
+      const provider = (window as any).CasperWalletProvider?.();
+      if (!provider) throw new Error("Casper Wallet not found");
+
+      let deploy;
+      let successMsg = "";
+
+      switch (route!.type) {
+        // ============================================
+        // WRAP: CSPR → WCSPR
+        // ============================================
+        case "wrap": {
+          showToast("info", "Wrapping CSPR", "Creating transaction...", undefined, 0);
+          
+          const args = RuntimeArgs.fromMap({
+            "wcspr_hash": new CLByteArray(toBytes(CONTRACTS.WCSPR)),
+            "amount": CLValueBuilder.u512(amountMotes.toString())
+          });
+
+          // Payment includes gas + amount to wrap
+          const payment = GAS.WRAP + Number(amountMotes);
+
+          deploy = DeployUtil.makeDeploy(
+            new DeployUtil.DeployParams(CLPublicKey.fromHex(walletAddress), "casper-test", 1, 1800000),
+            DeployUtil.ExecutableDeployItem.newModuleBytes(wasm.wrap_cspr!, args),
+            DeployUtil.standardPayment(payment)
+          );
+          successMsg = `Wrapped ${amount} CSPR → WCSPR`;
+          break;
+        }
+
+        // ============================================
+        // UNWRAP: WCSPR → CSPR
+        // ============================================
+        case "unwrap": {
+          showToast("info", "Unwrapping WCSPR", "Creating transaction...", undefined, 0);
+          
+          const args = RuntimeArgs.fromMap({
+            "wcspr_hash": new CLByteArray(toBytes(CONTRACTS.WCSPR)),
+            "amount": CLValueBuilder.u512(amountMotes.toString())
+          });
+
+          deploy = DeployUtil.makeDeploy(
+            new DeployUtil.DeployParams(CLPublicKey.fromHex(walletAddress), "casper-test", 1, 1800000),
+            DeployUtil.ExecutableDeployItem.newModuleBytes(wasm.unwrap_cspr!, args),
+            DeployUtil.standardPayment(GAS.UNWRAP)
+          );
+          successMsg = `Unwrapped ${amount} WCSPR → CSPR`;
+          break;
+        }
+
+        // ============================================
+        // CSPR → Token (via DEX)
+        // ============================================
+        case "cspr_to_token": {
+          showToast("info", "Swapping CSPR", "Creating transaction...", undefined, 0);
+          
+          // Path: WCSPR -> output token
+          const path = [`hash-${CONTRACTS.WCSPR}`, `hash-${toToken.hash}`];
+          
+          const args = RuntimeArgs.fromMap({
+            "router_hash": new CLByteArray(toBytes(CONTRACTS.ROUTER)),
+            "amount_in": CLValueBuilder.u512(amountMotes.toString()),
+            "amount_out_min": CLValueBuilder.u256(minOutput.toString()),
+            "path": CLValueBuilder.list(path.map(p => CLValueBuilder.string(p))),
+            "deadline": CLValueBuilder.u256(deadline.toString())
+          });
+
+          // Payment includes gas + amount to swap
+          const payment = GAS.SWAP_CSPR_TOKEN + Number(amountMotes);
+
+          deploy = DeployUtil.makeDeploy(
+            new DeployUtil.DeployParams(CLPublicKey.fromHex(walletAddress), "casper-test", 1, 1800000),
+            DeployUtil.ExecutableDeployItem.newModuleBytes(wasm.swap_cspr_for_tokens!, args),
+            DeployUtil.standardPayment(payment)
+          );
+          successMsg = `Swapped ${amount} CSPR → ${toToken.symbol}`;
+          break;
+        }
+
+        // ============================================
+        // Token → CSPR (via DEX)
+        // ============================================
+        case "token_to_cspr": {
+          // Step 1: Approve token spending
+          showToast("info", "Step 1/2: Approve", "Approving token...", undefined, 0);
+          
+          const approveArgs = RuntimeArgs.fromMap({
+            "spender": CLValueBuilder.key(new CLByteArray(toBytes(CONTRACTS.ROUTER))),
+            "amount": CLValueBuilder.u256(amountMotes.toString())
+          });
+
+          const approveDeploy = DeployUtil.makeDeploy(
+            new DeployUtil.DeployParams(CLPublicKey.fromHex(walletAddress), "casper-test", 1, 1800000),
+            DeployUtil.ExecutableDeployItem.newStoredContractByHash(toBytes(fromToken.hash!), "approve", approveArgs),
+            DeployUtil.standardPayment(GAS.APPROVE)
+          );
+
+          const approveJson = DeployUtil.deployToJson(approveDeploy);
+          const approveSig = await provider.sign(JSON.stringify(approveJson), walletAddress);
+          if (approveSig.cancelled) {
+            showFinalResult("error", "Cancelled", "Transaction cancelled by user");
+            cleanup();
+            return; // IMPORTANT: Early return
+          }
+
+          const approveData = approveJson.deploy as any;
+          approveData.approvals = [{ signer: walletAddress, signature: walletAddress.substring(0, 2) + approveSig.signatureHex }];
+          await sendDeploy(approveData);
+
+          showToast("info", "Waiting", "Approval processing (~15s)...", undefined, 0);
+          await new Promise(r => setTimeout(r, 15000));
+
+          // Step 2: Swap via session WASM
+          showToast("info", "Step 2/2: Swap", "Executing swap...", undefined, 0);
+          
+          // Path: input token -> WCSPR
+          const path = [`hash-${fromToken.hash}`, `hash-${CONTRACTS.WCSPR}`];
+          
+          const swapArgs = RuntimeArgs.fromMap({
+            "router_hash": new CLByteArray(toBytes(CONTRACTS.ROUTER)),
+            "amount_in": CLValueBuilder.u256(amountMotes.toString()),
+            "amount_out_min": CLValueBuilder.u256(minOutput.toString()),
+            "path": CLValueBuilder.list(path.map(p => CLValueBuilder.string(p))),
+            "deadline": CLValueBuilder.u256(deadline.toString())
+          });
+
+          deploy = DeployUtil.makeDeploy(
+            new DeployUtil.DeployParams(CLPublicKey.fromHex(walletAddress), "casper-test", 1, 1800000),
+            DeployUtil.ExecutableDeployItem.newModuleBytes(wasm.swap_tokens_for_cspr!, swapArgs),
+            DeployUtil.standardPayment(GAS.SWAP_TOKEN_CSPR)
+          );
+          successMsg = `Swapped ${amount} ${fromToken.symbol} → CSPR`;
+          break;
+        }
+
+        // ============================================
+        // Token → Token (via DEX, no WASM needed)
+        // ============================================
+        case "token_to_token": {
+          // Step 1: Approve token spending
+          showToast("info", "Step 1/2: Approve", "Approving token...", undefined, 0);
+          
+          const approveArgs = RuntimeArgs.fromMap({
+            "spender": CLValueBuilder.key(new CLByteArray(toBytes(CONTRACTS.ROUTER))),
+            "amount": CLValueBuilder.u256(amountMotes.toString())
+          });
+
+          const approveDeploy = DeployUtil.makeDeploy(
+            new DeployUtil.DeployParams(CLPublicKey.fromHex(walletAddress), "casper-test", 1, 1800000),
+            DeployUtil.ExecutableDeployItem.newStoredContractByHash(toBytes(fromToken.hash!), "approve", approveArgs),
+            DeployUtil.standardPayment(GAS.APPROVE)
+          );
+
+          const approveJson = DeployUtil.deployToJson(approveDeploy);
+          const approveSig = await provider.sign(JSON.stringify(approveJson), walletAddress);
+          if (approveSig.cancelled) {
+            showFinalResult("error", "Cancelled", "Transaction cancelled by user");
+            cleanup();
+            return; // IMPORTANT: Early return
+          }
+
+          const approveData = approveJson.deploy as any;
+          approveData.approvals = [{ signer: walletAddress, signature: walletAddress.substring(0, 2) + approveSig.signatureHex }];
+          await sendDeploy(approveData);
+
+          showToast("info", "Waiting", "Approval processing (~15s)...", undefined, 0);
+          await new Promise(r => setTimeout(r, 15000));
+
+          // Step 2: Swap via Router contract directly
+          showToast("info", "Step 2/2: Swap", "Executing swap...", undefined, 0);
+          
+          const path = [`hash-${fromToken.hash}`, `hash-${toToken.hash}`];
+          
+          const swapArgs = RuntimeArgs.fromMap({
+            "amount_in": CLValueBuilder.u256(amountMotes.toString()),
+            "amount_out_min": CLValueBuilder.u256(minOutput.toString()),
+            "path": CLValueBuilder.list(path.map(p => CLValueBuilder.string(p))),
+            "to": CLValueBuilder.key(CLPublicKey.fromHex(walletAddress)),
+            "deadline": CLValueBuilder.u256(deadline.toString())
+          });
+
+          deploy = DeployUtil.makeDeploy(
+            new DeployUtil.DeployParams(CLPublicKey.fromHex(walletAddress), "casper-test", 1, 1800000),
+            DeployUtil.ExecutableDeployItem.newStoredContractByHash(toBytes(CONTRACTS.ROUTER), "swap_exact_tokens_for_tokens", swapArgs),
+            DeployUtil.standardPayment(GAS.SWAP_TOKEN_TOKEN)
+          );
+          successMsg = `Swapped ${amount} ${fromToken.symbol} → ${toToken.symbol}`;
+          break;
+        }
+
+        default:
+          throw new Error("Unknown swap type");
+      }
+
+      // Sign and send
+      showToast("info", "Sign Transaction", "Please approve in wallet...", undefined, 0);
+      
+      const deployJson = DeployUtil.deployToJson(deploy);
+      console.log("Deploy:", JSON.stringify(deployJson, null, 2));
+      
+      const sig = await provider.sign(JSON.stringify(deployJson), walletAddress);
+      if (sig.cancelled) {
+        showFinalResult("error", "Cancelled", "Transaction cancelled by user");
+        cleanup();
+        return; // IMPORTANT: Early return
+      }
+
+      showToast("info", "Broadcasting", "Submitting to network...", undefined, 0);
+      
+      const deployData = deployJson.deploy as any;
+      deployData.approvals = [{ signer: walletAddress, signature: walletAddress.substring(0, 2) + sig.signatureHex }];
+      
+      const hash = await sendDeploy(deployData);
+      
+      // SUCCESS - Show toast and clean up
+      showFinalResult("success", "Success!", successMsg, hash);
+      setFromAmount("");
+      setToAmount("");
+      
+      // Refresh balance after delay
+      setTimeout(() => { fetchWCSPR(); }, 20000);
+      
+      // IMPORTANT: Clean up and return here to prevent any further code execution
+      cleanup();
+      return;
+
+    } catch (e: any) {
+      console.error("Swap error:", e);
+      if (e.message !== "Cancelled") {
+        showFinalResult("error", "Swap Failed", e.message);
+      }
+      cleanup();
+      return;
+    }
   };
+
+  // Token icon component
+  const TokenIcon = ({ token, size = 28 }: { token: typeof TOKENS[0], size?: number }) => (
+    <div 
+      className="rounded-full flex items-center justify-center font-bold text-black"
+      style={{ width: size, height: size, backgroundColor: token.color, fontSize: size * 0.4 }}
+    >
+      {token.symbol[0]}
+    </div>
+  );
+
+  const check = canExecute();
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#0D0D0D]">
+      <div className="fixed inset-0 bg-gradient-to-br from-[#FF0032]/5 via-transparent to-[#BFFF00]/5 pointer-events-none" />
+
       {/* Header */}
-      <section className="bg-gradient-to-b from-blue-900/20 to-black py-12">
-        <div className="max-w-7xl mx-auto px-4 md:px-8">
-          <h1 className="text-3xl md:text-5xl font-black mb-4">
-            LST <span className="text-blue-500">Swap</span>
-          </h1>
-          <p className="text-gray-400 max-w-xl">
-            Swap between all liquid staking tokens instantly. Trade csCSPR, stCSPR, lCSPR with low fees and minimal slippage.
+      <header className="relative border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <h1 className="text-3xl font-bold text-white">Swap</h1>
+          <p className="text-white/50 text-sm mt-1">Trade tokens via CasperSwap DEX</p>
+        </div>
+      </header>
+
+      <main className="relative max-w-md mx-auto px-4 py-8">
+        {/* WASM Status */}
+        <div className={`rounded-2xl p-4 mb-6 border ${
+          wasmLoading ? 'bg-blue-500/10 border-blue-500/20' :
+          Object.values(wasm).every(w => w !== null) ? 'bg-green-500/10 border-green-500/20' :
+          'bg-orange-500/10 border-orange-500/20'
+        }`}>
+          <p className={`font-medium text-sm mb-3 ${
+            wasmLoading ? 'text-blue-400' :
+            Object.values(wasm).every(w => w !== null) ? 'text-green-400' : 'text-orange-400'
+          }`}>
+            {wasmLoading ? 'Loading WASM modules...' :
+             Object.values(wasm).every(w => w !== null) ? '✓ All WASM modules loaded' : 
+             'Some WASM modules missing'}
           </p>
-        </div>
-      </section>
-
-      {/* Supported Tokens */}
-      <section className="max-w-7xl mx-auto px-4 md:px-8 py-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {tokens.map((token) => (
-            <div key={token.symbol} className="bg-white/5 border border-white/10 p-4 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-2xl">{token.icon}</span>
-                <span className="font-bold">{token.symbol}</span>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            {(['wrap_cspr', 'unwrap_cspr', 'swap_cspr_for_tokens', 'swap_tokens_for_cspr'] as const).map(name => (
+              <div key={name} className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${wasm[name] ? 'bg-green-500' : 'bg-orange-500'}`}></span>
+                <span className="text-white/60 truncate">{name}</span>
               </div>
-              <p className="text-gray-400 text-xs">{token.name}</p>
-              <p className="text-sm mt-1">Rate: {token.rate.toFixed(4)} CSPR</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Swap Interface */}
-      <section className="max-w-lg mx-auto px-4 md:px-8 py-8">
-        <div className="bg-white text-black p-6 rounded-xl">
-          <div className="flex items-center gap-2 mb-6">
-            <span className="text-2xl">🔄</span>
-            <h2 className="text-xl font-black">Swap Tokens</h2>
+            ))}
           </div>
+        </div>
 
-          {/* From Token */}
-          <div className="mb-2">
-            <label className="text-sm font-bold text-gray-600 block mb-1">From</label>
-            <div className="flex border-2 border-black rounded overflow-hidden">
-              <select
-                value={swapFrom}
-                onChange={(e) => setSwapFrom(e.target.value)}
-                className="bg-gray-100 px-4 py-3 font-bold border-r-2 border-black"
-              >
-                {tokens.map((token) => (
-                  <option key={token.symbol} value={token.symbol}>
-                    {token.icon} {token.symbol}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                value={swapAmount}
-                onChange={(e) => setSwapAmount(e.target.value)}
-                placeholder="0.0"
-                className="flex-1 px-4 py-3 text-xl font-bold focus:outline-none"
+        {/* Swap Card */}
+        <div className="bg-[#141414] border border-white/5 rounded-3xl p-4">
+          {/* From Section */}
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-white/50 text-sm">You pay</span>
+            <span className="text-white/30 text-xs">Slippage: {slippage}%</span>
+          </div>
+          <div className="bg-[#0D0D0D] rounded-2xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="relative" ref={fromRef}>
+                <button 
+                  onClick={() => setShowFrom(!showFrom)} 
+                  className="flex items-center gap-2 bg-white/5 hover:bg-white/10 pl-2 pr-3 py-2 rounded-full transition-colors"
+                >
+                  <TokenIcon token={fromToken} />
+                  <span className="text-white font-semibold">{fromToken.symbol}</span>
+                  <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showFrom && (
+                  <div className="absolute left-0 top-full mt-2 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl overflow-hidden z-50 shadow-xl">
+                    {TOKENS.filter(t => t.symbol !== toToken.symbol).map(t => (
+                      <button 
+                        key={t.symbol} 
+                        onClick={() => { setFromToken(t); setShowFrom(false); setFromAmount(""); }} 
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors"
+                      >
+                        <TokenIcon token={t} size={32} />
+                        <div className="text-left">
+                          <p className="text-white font-medium">{t.symbol}</p>
+                          <p className="text-white/40 text-xs">{t.name}</p>
+                        </div>
+                        <span className="ml-auto text-white/40 text-sm">{getBal(t.symbol).toFixed(2)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <input 
+                type="number" 
+                value={fromAmount} 
+                onChange={e => setFromAmount(e.target.value)} 
+                placeholder="0" 
+                className="flex-1 bg-transparent text-right text-2xl font-medium text-white placeholder-white/20 focus:outline-none"
               />
             </div>
-            {connected && (
-              <p className="text-xs text-gray-500 mt-1">
-                Balance: {getBalance(swapFrom).toFixed(4)} {swapFrom}
-                <button
-                  onClick={() => setSwapAmount(getBalance(swapFrom).toString())}
-                  className="ml-2 text-blue-500 hover:underline"
+            <div className="flex justify-between mt-3 pt-3 border-t border-white/5 text-sm">
+              <span className="text-white/40">Balance: {getBal(fromToken.symbol).toFixed(4)}</span>
+              <div className="flex gap-1">
+                {[25, 50, 75].map(p => (
+                  <button 
+                    key={p}
+                    onClick={() => setFromAmount((getBal(fromToken.symbol) * p / 100).toFixed(6))} 
+                    className="px-2 py-1 text-xs text-white/40 hover:text-white hover:bg-white/5 rounded transition-colors"
+                  >
+                    {p}%
+                  </button>
+                ))}
+                <button 
+                  onClick={() => setFromAmount(Math.max(0, getBal(fromToken.symbol) - (fromToken.symbol === "CSPR" ? 15 : 0)).toFixed(6))} 
+                  className="px-2 py-1 text-xs text-[#FF0032] hover:bg-[#FF0032]/10 rounded font-medium transition-colors"
                 >
                   MAX
                 </button>
-              </p>
-            )}
+              </div>
+            </div>
           </div>
 
-          {/* Swap Button */}
-          <div className="flex justify-center my-2">
-            <button
-              onClick={switchTokens}
-              className="p-3 bg-gray-100 rounded-full hover:bg-gray-200 transition"
+          {/* Switch Button */}
+          <div className="flex justify-center -my-2 relative z-10">
+            <button 
+              onClick={switchTokens} 
+              className="w-10 h-10 bg-[#1a1a1a] border-4 border-[#141414] rounded-xl flex items-center justify-center hover:bg-[#252525] transition-colors"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
               </svg>
             </button>
           </div>
 
-          {/* To Token */}
-          <div className="mb-4">
-            <label className="text-sm font-bold text-gray-600 block mb-1">To</label>
-            <div className="flex border-2 border-black rounded overflow-hidden">
-              <select
-                value={swapTo}
-                onChange={(e) => setSwapTo(e.target.value)}
-                className="bg-gray-100 px-4 py-3 font-bold border-r-2 border-black"
-              >
-                {tokens.map((token) => (
-                  <option key={token.symbol} value={token.symbol}>
-                    {token.icon} {token.symbol}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="text"
-                value={swapAmount ? (parseFloat(swapAmount) * getRate(swapFrom, swapTo)).toFixed(4) : ""}
-                readOnly
-                placeholder="0.0"
-                className="flex-1 px-4 py-3 text-xl font-bold bg-gray-50"
-              />
-            </div>
-            {connected && (
-              <p className="text-xs text-gray-500 mt-1">
-                Balance: {getBalance(swapTo).toFixed(4)} {swapTo}
+          {/* To Section */}
+          <div className="mb-2 mt-3">
+            <span className="text-white/50 text-sm">You receive</span>
+          </div>
+          <div className="bg-[#0D0D0D] rounded-2xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="relative" ref={toRef}>
+                <button 
+                  onClick={() => setShowTo(!showTo)} 
+                  className="flex items-center gap-2 bg-white/5 hover:bg-white/10 pl-2 pr-3 py-2 rounded-full transition-colors"
+                >
+                  <TokenIcon token={toToken} />
+                  <span className="text-white font-semibold">{toToken.symbol}</span>
+                  <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showTo && (
+                  <div className="absolute left-0 top-full mt-2 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl overflow-hidden z-50 shadow-xl">
+                    {TOKENS.filter(t => t.symbol !== fromToken.symbol).map(t => (
+                      <button 
+                        key={t.symbol} 
+                        onClick={() => { setToToken(t); setShowTo(false); }} 
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors"
+                      >
+                        <TokenIcon token={t} size={32} />
+                        <div className="text-left">
+                          <p className="text-white font-medium">{t.symbol}</p>
+                          <p className="text-white/40 text-xs">{t.name}</p>
+                        </div>
+                        <span className="ml-auto text-white/40 text-sm">{getBal(t.symbol).toFixed(2)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <p className={`flex-1 text-right text-2xl font-medium ${toAmount ? 'text-white' : 'text-white/20'}`}>
+                {toAmount || "0"}
               </p>
+            </div>
+            <div className="mt-3 pt-3 border-t border-white/5 text-sm">
+              <span className="text-white/40">Balance: {getBal(toToken.symbol).toFixed(4)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Route Info */}
+        {route && fromAmount && parseFloat(fromAmount) > 0 && (
+          <div className={`mt-3 p-4 rounded-2xl border ${check.ok ? 'bg-[#141414] border-white/5' : 'bg-orange-500/10 border-orange-500/20'}`}>
+            {!check.ok && (
+              <p className="text-orange-400 text-sm mb-3">⚠️ {check.reason}</p>
             )}
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-white/50">Route Type</span>
+                <span className="text-white capitalize">{route.type.replace(/_/g, ' ')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/50">Fee</span>
+                <span className="text-white">{route.fee}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/50">Min Received</span>
+                <span className="text-white">{(parseFloat(toAmount) * (1 - slippage / 100)).toFixed(6)} {toToken.symbol}</span>
+              </div>
+              {route.wasmFile && (
+                <div className="flex justify-between">
+                  <span className="text-white/50">WASM</span>
+                  <span className={wasm[route.wasmFile.replace('.wasm', '') as keyof WasmCache] ? 'text-green-400' : 'text-orange-400'}>
+                    {route.wasmFile}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
+        )}
 
-          {/* Swap Details */}
-          <div className="bg-gray-100 p-4 rounded mb-4 text-sm space-y-2">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Exchange Rate:</span>
-              <span className="font-bold">1 {swapFrom} = {getRate(swapFrom, swapTo).toFixed(4)} {swapTo}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Price Impact:</span>
-              <span className="font-bold text-green-600">&lt;0.01%</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Swap Fee:</span>
-              <span className="font-bold">0.1%</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Route:</span>
-              <span className="font-bold">{swapFrom} → {swapTo}</span>
-            </div>
-          </div>
+        {/* Swap Button */}
+        <button
+          onClick={doSwap}
+          disabled={swapping || wasmLoading || !connected || !check.ok}
+          className={`w-full mt-4 py-4 rounded-2xl font-semibold text-lg transition-all ${
+            !connected ? "bg-[#FF0032] text-white hover:bg-[#FF0032]/90" :
+            swapping || wasmLoading ? "bg-white/10 text-white/50 cursor-wait" :
+            check.ok ? "bg-[#FF0032] text-white hover:bg-[#FF0032]/90 shadow-lg shadow-[#FF0032]/25" :
+            "bg-orange-500/20 text-orange-400 cursor-not-allowed"
+          }`}
+        >
+          {swapping ? "Processing..." :
+           wasmLoading ? "Loading WASM..." :
+           !connected ? "Connect Wallet" :
+           !check.ok ? (check.reason || "Cannot Swap") :
+           `Swap ${fromToken.symbol} → ${toToken.symbol}`}
+        </button>
 
-          {/* Swap Button */}
-          <button
-            onClick={connected ? handleSwap : connect}
-            disabled={loading || walletLoading || !swapAmount}
-            className="w-full py-4 bg-blue-600 text-white font-bold text-lg hover:bg-blue-700 disabled:opacity-50 rounded"
-          >
-            {loading ? "⏳ Swapping..." : connected ? `Swap ${swapFrom} → ${swapTo}` : "Connect Wallet"}
-          </button>
+        {/* Navigation Links */}
+        <div className="mt-8 flex justify-center gap-6 text-sm">
+          <a href="/stake" className="text-[#FF0032] hover:underline">← Stake</a>
+          <a href="/history" className="text-white/50 hover:text-white">History</a>
+          <a href="https://testnet.casperswap.xyz/" target="_blank" className="text-blue-400 hover:underline">CasperSwap →</a>
         </div>
 
-        {/* Info Box */}
-        <div className="mt-6 bg-blue-900/20 border border-blue-500/30 p-4 rounded-lg">
-          <h3 className="font-bold text-blue-400 mb-2">💡 Why use the LST DEX?</h3>
-          <ul className="text-gray-400 text-sm space-y-1">
-            <li>• Swap between ALL liquid staking tokens in one place</li>
-            <li>• Lowest fees (0.1%) compared to general DEXs</li>
-            <li>• Optimized routing for LST pairs</li>
-            <li>• No need to unstake - instant liquidity</li>
-          </ul>
-        </div>
-      </section>
-
-      {/* Liquidity Pools */}
-      <section className="max-w-7xl mx-auto px-4 md:px-8 py-12">
-        <h2 className="text-2xl font-black mb-6">Liquidity Pools</h2>
-        <div className="grid md:grid-cols-3 gap-4">
-          <div className="bg-white/5 border border-white/10 p-4 rounded-lg">
-            <div className="flex items-center gap-2 mb-3">
-              <span>🔴🟢</span>
-              <span className="font-bold">CSPR / csCSPR</span>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-gray-400">TVL</p>
-                <p className="font-bold">$2.4M</p>
-              </div>
-              <div>
-                <p className="text-gray-400">24h Volume</p>
-                <p className="font-bold">$156K</p>
-              </div>
-              <div>
-                <p className="text-gray-400">APR</p>
-                <p className="font-bold text-green-400">8.2%</p>
-              </div>
-              <div>
-                <p className="text-gray-400">Fee</p>
-                <p className="font-bold">0.1%</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/5 border border-white/10 p-4 rounded-lg">
-            <div className="flex items-center gap-2 mb-3">
-              <span>🟢🔵</span>
-              <span className="font-bold">csCSPR / stCSPR</span>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-gray-400">TVL</p>
-                <p className="font-bold">$890K</p>
-              </div>
-              <div>
-                <p className="text-gray-400">24h Volume</p>
-                <p className="font-bold">$42K</p>
-              </div>
-              <div>
-                <p className="text-gray-400">APR</p>
-                <p className="font-bold text-green-400">5.8%</p>
-              </div>
-              <div>
-                <p className="text-gray-400">Fee</p>
-                <p className="font-bold">0.05%</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/5 border border-white/10 p-4 rounded-lg">
-            <div className="flex items-center gap-2 mb-3">
-              <span>🟢🟣</span>
-              <span className="font-bold">csCSPR / lCSPR</span>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-gray-400">TVL</p>
-                <p className="font-bold">$520K</p>
-              </div>
-              <div>
-                <p className="text-gray-400">24h Volume</p>
-                <p className="font-bold">$28K</p>
-              </div>
-              <div>
-                <p className="text-gray-400">APR</p>
-                <p className="font-bold text-green-400">6.1%</p>
-              </div>
-              <div>
-                <p className="text-gray-400">Fee</p>
-                <p className="font-bold">0.05%</p>
-              </div>
-            </div>
+        {/* Contracts Info */}
+        <div className="mt-8 p-4 bg-white/5 rounded-xl text-xs">
+          <p className="text-white/50 mb-2">Contracts (Testnet)</p>
+          <div className="space-y-1 font-mono text-white/30">
+            <p>Router: {CONTRACTS.ROUTER.slice(0, 16)}...</p>
+            <p>WCSPR: {CONTRACTS.WCSPR.slice(0, 16)}...</p>
+            <p>csCSPR: {CONTRACTS.CSCSPR.slice(0, 16)}...</p>
           </div>
         </div>
-      </section>
+      </main>
     </div>
   );
 }

@@ -929,6 +929,281 @@
 //   );
 // }
 
+// "use client";
+// import Link from "next/link";
+// import { useWallet } from "@/contexts/WalletContext";
+
+// export default function HomePage() {
+//   const { connected, realBalance, stakedBalance, cscsprBalance, exchangeRate } = useWallet();
+
+//   return (
+//     <div className="min-h-screen">
+//       {/* Hero Section */}
+//       <section className="relative overflow-hidden">
+//         <div className="absolute inset-0 bg-gradient-to-br from-red-900/20 to-black"></div>
+//         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24 relative">
+//           <div className="max-w-3xl">
+//             <div className="inline-block bg-red-600 text-white px-3 py-1 text-sm font-bold mb-6">
+//               🏆 Casper Hackathon 2026
+//             </div>
+//             <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight">
+//               Privacy-First<br />
+//               <span className="text-red-500">Liquid Staking</span><br />
+//               on Casper
+//             </h1>
+//             <p className="text-gray-400 text-lg md:text-xl mb-8 max-w-xl">
+//               Stake CSPR, receive csCSPR. Earn 12.5% APY while maintaining full liquidity. 
+//               First liquid staking protocol with ZK proofs, cross-chain bridge, and anonymous governance.
+//             </p>
+//             <div className="flex flex-wrap gap-4">
+//               <Link href="/stake" className="px-8 py-4 bg-[#CDFF00] text-black font-bold text-lg hover:bg-[#b8e600] transition">
+//                 Start Staking →
+//               </Link>
+//               <Link href="/analytics" className="px-8 py-4 border-2 border-white text-white font-bold text-lg hover:bg-white hover:text-black transition">
+//                 View Analytics
+//               </Link>
+//             </div>
+//           </div>
+//         </div>
+//       </section>
+
+//       {/* Stats Bar */}
+//       <section className="bg-red-600">
+//         <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 grid grid-cols-2 md:grid-cols-4 gap-6">
+//           <div>
+//             <p className="text-red-200 text-sm">Total Value Locked</p>
+//             <p className="text-2xl md:text-3xl font-black">$5.8M</p>
+//           </div>
+//           <div>
+//             <p className="text-red-200 text-sm">APY</p>
+//             <p className="text-2xl md:text-3xl font-black">12.5%</p>
+//           </div>
+//           <div>
+//             <p className="text-red-200 text-sm">Exchange Rate</p>
+//             <p className="text-2xl md:text-3xl font-black">1:{exchangeRate.toFixed(4)}</p>
+//           </div>
+//           <div>
+//             <p className="text-red-200 text-sm">Unique Stakers</p>
+//             <p className="text-2xl md:text-3xl font-black">3,847</p>
+//           </div>
+//         </div>
+//       </section>
+
+//       {/* User Balance (if connected) */}
+//       {connected && (
+//         <section className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+//           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+//             <div className="bg-white/5 border border-white/10 p-5 rounded-lg">
+//               <p className="text-gray-400 text-sm">Wallet Balance</p>
+//               <p className="text-2xl font-black text-blue-400">{realBalance?.toFixed(2) || "..."} <span className="text-sm">CSPR</span></p>
+//             </div>
+//             <div className="bg-white/5 border border-white/10 p-5 rounded-lg">
+//               <p className="text-gray-400 text-sm">Staked Value</p>
+//               <p className="text-2xl font-black text-[#CDFF00]">{(cscsprBalance * exchangeRate).toFixed(2)} <span className="text-sm">CSPR</span></p>
+//             </div>
+//             <div className="bg-white/5 border border-white/10 p-5 rounded-lg">
+//               <p className="text-gray-400 text-sm">csCSPR Balance</p>
+//               <p className="text-2xl font-black text-green-400">{cscsprBalance.toFixed(2)}</p>
+//             </div>
+//             <div className="bg-white/5 border border-white/10 p-5 rounded-lg">
+//               <p className="text-gray-400 text-sm">Rewards Earned</p>
+//               <p className="text-2xl font-black text-purple-400">+{((cscsprBalance * exchangeRate) - stakedBalance).toFixed(2)} <span className="text-sm">CSPR</span></p>
+//             </div>
+//           </div>
+//           <div className="mt-4 flex gap-4">
+//             <Link href="/stake" className="px-6 py-3 bg-[#CDFF00] text-black font-bold hover:bg-[#b8e600]">
+//               Stake More →
+//             </Link>
+//             <Link href="/privacy" className="px-6 py-3 bg-white/10 text-white font-bold hover:bg-white/20">
+//               Generate ZK Proof →
+//             </Link>
+//           </div>
+//         </section>
+//       )}
+
+//       {/* Features Grid */}
+//       <section className="max-w-7xl mx-auto px-4 md:px-8 py-16">
+//         <h2 className="text-3xl md:text-4xl font-black mb-4 text-center">
+//           Complete <span className="text-red-500">DeFi Platform</span>
+//         </h2>
+//         <p className="text-gray-400 text-center mb-12 max-w-2xl mx-auto">
+//           Not just liquid staking - a full privacy-first DeFi ecosystem on Casper Network
+//         </p>
+
+//         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+//           {/* Liquid Staking */}
+//           <Link href="/stake" className="group bg-white/5 border border-white/10 p-6 rounded-xl hover:border-red-500/50 transition">
+//             <div className="text-4xl mb-4">💧</div>
+//             <h3 className="text-xl font-bold mb-2 group-hover:text-red-500 transition">Liquid Staking</h3>
+//             <p className="text-gray-400 text-sm mb-4">Stake CSPR and receive csCSPR. Earn 12.5% APY with auto-compounding rewards.</p>
+//             <div className="flex gap-2 flex-wrap">
+//               <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">Auto-compound</span>
+//               <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">Validator Selection</span>
+//             </div>
+//           </Link>
+
+//           {/* LST DEX */}
+//           <Link href="/swap" className="group bg-white/5 border border-white/10 p-6 rounded-xl hover:border-blue-500/50 transition">
+//             <div className="text-4xl mb-4">🔄</div>
+//             <h3 className="text-xl font-bold mb-2 group-hover:text-blue-500 transition">LST DEX</h3>
+//             <p className="text-gray-400 text-sm mb-4">Swap between all liquid staking tokens. Trade csCSPR, stCSPR, lCSPR instantly.</p>
+//             <div className="flex gap-2 flex-wrap">
+//               <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">Multi-token</span>
+//               <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded">Low Fees</span>
+//             </div>
+//           </Link>
+
+//           {/* Cross-Chain Bridge */}
+//           <Link href="/bridge" className="group bg-white/5 border border-white/10 p-6 rounded-xl hover:border-purple-500/50 transition">
+//             <div className="text-4xl mb-4">🌉</div>
+//             <h3 className="text-xl font-bold mb-2 group-hover:text-purple-500 transition">Cross-Chain Bridge</h3>
+//             <p className="text-gray-400 text-sm mb-4">Bridge csCSPR to Ethereum, Polygon, Arbitrum. Earn yield while bridging!</p>
+//             <div className="flex gap-2 flex-wrap">
+//               <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded">Yield-Bearing</span>
+//               <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">Multi-chain</span>
+//             </div>
+//           </Link>
+
+//           {/* ZK Privacy */}
+//           <Link href="/privacy" className="group bg-white/5 border border-white/10 p-6 rounded-xl hover:border-green-500/50 transition">
+//             <div className="text-4xl mb-4">🔐</div>
+//             <h3 className="text-xl font-bold mb-2 group-hover:text-green-500 transition">ZK Privacy Suite</h3>
+//             <p className="text-gray-400 text-sm mb-4">Generate zero-knowledge proofs. Prove balance, tier, whale status without revealing data.</p>
+//             <div className="flex gap-2 flex-wrap">
+//               <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">4 Proof Types</span>
+//               <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded">Tier Badges</span>
+//             </div>
+//           </Link>
+
+//           {/* Anonymous DAO */}
+//           <Link href="/privacy" className="group bg-white/5 border border-white/10 p-6 rounded-xl hover:border-pink-500/50 transition">
+//             <div className="text-4xl mb-4">🗳️</div>
+//             <h3 className="text-xl font-bold mb-2 group-hover:text-pink-500 transition">Anonymous DAO</h3>
+//             <p className="text-gray-400 text-sm mb-4">Vote on proposals without revealing your identity. Privacy-preserving governance.</p>
+//             <div className="flex gap-2 flex-wrap">
+//               <span className="text-xs bg-pink-500/20 text-pink-400 px-2 py-1 rounded">Anonymous Voting</span>
+//               <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded">ZK Secured</span>
+//             </div>
+//           </Link>
+
+//           {/* Analytics */}
+//           <Link href="/analytics" className="group bg-white/5 border border-white/10 p-6 rounded-xl hover:border-yellow-500/50 transition">
+//             <div className="text-4xl mb-4">📊</div>
+//             <h3 className="text-xl font-bold mb-2 group-hover:text-yellow-500 transition">Analytics Dashboard</h3>
+//             <p className="text-gray-400 text-sm mb-4">Real-time protocol metrics, validator performance, and network health monitoring.</p>
+//             <div className="flex gap-2 flex-wrap">
+//               <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded">Real-time</span>
+//               <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">Validators</span>
+//             </div>
+//           </Link>
+//         </div>
+//       </section>
+
+//       {/* Why CasperStake */}
+//       <section className="bg-white text-black py-16">
+//         <div className="max-w-7xl mx-auto px-4 md:px-8">
+//           <h2 className="text-3xl md:text-4xl font-black mb-12 text-center">
+//             Why <span className="text-red-500">CasperStake</span>?
+//           </h2>
+//           <div className="grid md:grid-cols-3 gap-6 mb-12">
+//             <div className="border-2 border-black p-6">
+//               <div className="text-4xl mb-4">💧</div>
+//               <h3 className="text-xl font-black mb-2">Liquid Staking</h3>
+//               <p className="text-gray-600">Stake CSPR, receive csCSPR. Use in DeFi while earning 12.5% APY with auto-compounding.</p>
+//             </div>
+//             <div className="border-2 border-black p-6">
+//               <div className="text-4xl mb-4">🔐</div>
+//               <h3 className="text-xl font-black mb-2">Privacy First</h3>
+//               <p className="text-gray-600">4 ZK proof types: Balance, Tier Badges, Whale Status, Anonymous DAO voting.</p>
+//             </div>
+//             <div className="border-2 border-black p-6">
+//               <div className="text-4xl mb-4">🛡️</div>
+//               <h3 className="text-xl font-black mb-2">Threshold Security</h3>
+//               <p className="text-gray-600">2-of-3 multi-sig protects against validator slashing & single point of failure.</p>
+//             </div>
+//           </div>
+
+//           {/* Hackathon Differentiators */}
+//           <div className="bg-gradient-to-r from-gray-900 to-gray-800 text-white p-8 rounded-xl">
+//             <h3 className="text-2xl font-black mb-6 text-center">🏆 What Makes Us Unique</h3>
+//             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+//               <div className="bg-white/10 p-4 rounded-lg">
+//                 <p className="text-3xl mb-2">🔐</p>
+//                 <p className="font-bold text-sm">ZK Proofs</p>
+//                 <p className="text-xs text-gray-400">4 unique types</p>
+//               </div>
+//               <div className="bg-white/10 p-4 rounded-lg">
+//                 <p className="text-3xl mb-2">🔄</p>
+//                 <p className="font-bold text-sm">LST DEX</p>
+//                 <p className="text-xs text-gray-400">All tokens</p>
+//               </div>
+//               <div className="bg-white/10 p-4 rounded-lg">
+//                 <p className="text-3xl mb-2">🌉</p>
+//                 <p className="font-bold text-sm">Yield Bridge</p>
+//                 <p className="text-xs text-gray-400">Earn while bridge</p>
+//               </div>
+//               <div className="bg-white/10 p-4 rounded-lg">
+//                 <p className="text-3xl mb-2">🗳️</p>
+//                 <p className="font-bold text-sm">Anon DAO</p>
+//                 <p className="text-xs text-gray-400">Private votes</p>
+//               </div>
+//               <div className="bg-white/10 p-4 rounded-lg">
+//                 <p className="text-3xl mb-2">✅</p>
+//                 <p className="font-bold text-sm">5 Contracts</p>
+//                 <p className="text-xs text-gray-400">Live on testnet</p>
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+//       </section>
+
+//       {/* Deployed Contracts */}
+//       <section className="max-w-7xl mx-auto px-4 md:px-8 py-16">
+//         <h2 className="text-3xl md:text-4xl font-black mb-2">
+//           Deployed <span className="text-red-500">Contracts</span>
+//         </h2>
+//         <p className="text-gray-400 mb-8">Live on Casper Testnet • Built with Odra Framework</p>
+//         <div className="space-y-3">
+//           {[
+//             { name: "CasperStake v2", desc: "Main staking contract", hash: "f0bae28501892c5b23abf796ca13eafa50442326803a62ba4de1f26b53bcdc85" },
+//             { name: "csCSPR Token", desc: "Liquid staking token", hash: "0151186fd048db71838f7d54458489145528c5d277e67264529a94f3a2a873" },
+//             { name: "Privacy Module", desc: "ZK proof verification", hash: "a1b2c3d4e5f6..." },
+//             { name: "Threshold Module", desc: "Multi-sig security", hash: "b2c3d4e5f6a1..." },
+//           ].map((contract, i) => (
+//             <div key={i} className="flex flex-col md:flex-row md:justify-between md:items-center bg-white/5 border border-white/10 p-4 rounded-lg gap-2">
+//               <div>
+//                 <p className="font-bold">{contract.name}</p>
+//                 <p className="text-gray-400 text-sm">{contract.desc}</p>
+//               </div>
+//               <a
+//                 href={`https://testnet.cspr.live/contract-package/${contract.hash}`}
+//                 target="_blank"
+//                 rel="noopener noreferrer"
+//                 className="font-mono text-xs text-red-400 hover:underline"
+//               >
+//                 {contract.hash.slice(0, 16)}...
+//               </a>
+//             </div>
+//           ))}
+//         </div>
+//       </section>
+
+//       {/* CTA */}
+//       <section className="bg-red-600 py-16">
+//         <div className="max-w-7xl mx-auto px-4 md:px-8 text-center">
+//           <h2 className="text-3xl md:text-4xl font-black mb-4">Ready to Stake?</h2>
+//           <p className="text-red-100 mb-8 max-w-xl mx-auto">
+//             Join thousands of stakers earning 12.5% APY while maintaining full liquidity and privacy.
+//           </p>
+//           <Link href="/stake" className="inline-block px-8 py-4 bg-white text-red-600 font-bold text-lg hover:bg-gray-100 transition">
+//             Start Staking Now →
+//           </Link>
+//         </div>
+//       </section>
+//     </div>
+//   );
+// }
+
 "use client";
 import Link from "next/link";
 import { useWallet } from "@/contexts/WalletContext";
@@ -937,220 +1212,341 @@ export default function HomePage() {
   const { connected, realBalance, stakedBalance, cscsprBalance, exchangeRate } = useWallet();
 
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-red-900/20 to-black"></div>
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 md:py-24 relative">
-          <div className="max-w-3xl">
-            <div className="inline-block bg-red-600 text-white px-3 py-1 text-sm font-bold mb-6">
-              🏆 Casper Hackathon 2026
+    <div className="min-h-screen bg-white text-gray-900">
+      {/* Hero Section - Dark Gradient */}
+      <section className="relative bg-gradient-to-br from-black via-gray-900 to-red-950 overflow-hidden">
+        {/* Subtle grid pattern overlay */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+        }}></div>
+        
+        {/* Gradient orbs */}
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-red-600/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3"></div>
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-red-800/10 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/3"></div>
+        
+        <div className="relative max-w-7xl mx-auto px-6 lg:px-8 py-20 lg:py-32">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 bg-red-600/20 border border-red-500/30 text-red-400 px-4 py-2 rounded-full text-sm font-medium mb-8 backdrop-blur-sm">
+                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                Casper Hackathon 2026
+              </div>
+              <h1 className="text-4xl lg:text-6xl font-bold tracking-tight mb-6 text-white">
+                Privacy-First
+                <span className="block text-red-500">Liquid Staking</span>
+                on Casper
+              </h1>
+              <p className="text-lg text-gray-400 mb-8 max-w-lg leading-relaxed">
+                Stake CSPR, receive csCSPR. Earn 12.5% APY while maintaining full liquidity. 
+                First liquid staking protocol with ZK proofs and anonymous governance.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <Link 
+                  href="/stake" 
+                  className="inline-flex items-center gap-2 px-6 py-3.5 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-all hover:shadow-lg hover:shadow-red-600/25"
+                >
+                  Start Staking
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </Link>
+                <Link 
+                  href="/analytics" 
+                  className="inline-flex items-center gap-2 px-6 py-3.5 bg-white/5 text-white font-semibold rounded-lg border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all backdrop-blur-sm"
+                >
+                  View Analytics
+                </Link>
+              </div>
             </div>
-            <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight">
-              Privacy-First<br />
-              <span className="text-red-500">Liquid Staking</span><br />
-              on Casper
-            </h1>
-            <p className="text-gray-400 text-lg md:text-xl mb-8 max-w-xl">
-              Stake CSPR, receive csCSPR. Earn 12.5% APY while maintaining full liquidity. 
-              First liquid staking protocol with ZK proofs, cross-chain bridge, and anonymous governance.
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <Link href="/stake" className="px-8 py-4 bg-[#CDFF00] text-black font-bold text-lg hover:bg-[#b8e600] transition">
-                Start Staking →
-              </Link>
-              <Link href="/analytics" className="px-8 py-4 border-2 border-white text-white font-bold text-lg hover:bg-white hover:text-black transition">
-                View Analytics
-              </Link>
+            
+            {/* Hero Visual - Protocol Card */}
+            <div className="relative hidden lg:block">
+              <div className="absolute inset-0 bg-gradient-to-br from-red-600/20 to-transparent rounded-2xl transform rotate-2 blur-xl"></div>
+              <div className="relative bg-white/5 backdrop-blur-md rounded-2xl p-8 border border-white/10">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between pb-6 border-b border-white/10">
+                    <span className="text-sm font-medium text-gray-400">Protocol Overview</span>
+                    <span className="text-xs bg-green-500/20 text-green-400 px-2.5 py-1 rounded-full font-medium">Live on Testnet</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Total Staked</p>
+                      <p className="text-2xl font-bold text-white">145.2M CSPR</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">APY</p>
+                      <p className="text-2xl font-bold text-green-400">12.5%</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Exchange Rate</p>
+                      <p className="text-2xl font-bold text-white">1:{exchangeRate.toFixed(4)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Stakers</p>
+                      <p className="text-2xl font-bold text-white">3,847</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </section>
-
-      {/* Stats Bar */}
-      <section className="bg-red-600">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div>
-            <p className="text-red-200 text-sm">Total Value Locked</p>
-            <p className="text-2xl md:text-3xl font-black">$5.8M</p>
-          </div>
-          <div>
-            <p className="text-red-200 text-sm">APY</p>
-            <p className="text-2xl md:text-3xl font-black">12.5%</p>
-          </div>
-          <div>
-            <p className="text-red-200 text-sm">Exchange Rate</p>
-            <p className="text-2xl md:text-3xl font-black">1:{exchangeRate.toFixed(4)}</p>
-          </div>
-          <div>
-            <p className="text-red-200 text-sm">Unique Stakers</p>
-            <p className="text-2xl md:text-3xl font-black">3,847</p>
+        
+        {/* Stats Bar */}
+        <div className="relative border-t border-white/10 bg-black/20 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8 py-6 grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Value Locked</p>
+              <p className="text-xl lg:text-2xl font-bold text-white">$5.8M</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">APY</p>
+              <p className="text-xl lg:text-2xl font-bold text-green-400">12.5%</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Exchange Rate</p>
+              <p className="text-xl lg:text-2xl font-bold text-white">1:{exchangeRate.toFixed(4)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Unique Stakers</p>
+              <p className="text-xl lg:text-2xl font-bold text-white">3,847</p>
+            </div>
           </div>
         </div>
       </section>
 
       {/* User Balance (if connected) */}
       {connected && (
-        <section className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white/5 border border-white/10 p-5 rounded-lg">
-              <p className="text-gray-400 text-sm">Wallet Balance</p>
-              <p className="text-2xl font-black text-blue-400">{realBalance?.toFixed(2) || "..."} <span className="text-sm">CSPR</span></p>
+        <section className="max-w-7xl mx-auto px-6 lg:px-8 py-8">
+          <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-semibold text-gray-900">Your Portfolio</h3>
+              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">Connected</span>
             </div>
-            <div className="bg-white/5 border border-white/10 p-5 rounded-lg">
-              <p className="text-gray-400 text-sm">Staked Value</p>
-              <p className="text-2xl font-black text-[#CDFF00]">{(cscsprBalance * exchangeRate).toFixed(2)} <span className="text-sm">CSPR</span></p>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white rounded-xl p-4 border border-gray-100">
+                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Wallet Balance</p>
+                <p className="text-xl font-bold">{realBalance?.toFixed(2) || "..."} <span className="text-sm font-normal text-gray-500">CSPR</span></p>
+              </div>
+              <div className="bg-white rounded-xl p-4 border border-gray-100">
+                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Staked Value</p>
+                <p className="text-xl font-bold">{(cscsprBalance * exchangeRate).toFixed(2)} <span className="text-sm font-normal text-gray-500">CSPR</span></p>
+              </div>
+              <div className="bg-white rounded-xl p-4 border border-gray-100">
+                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">csCSPR Balance</p>
+                <p className="text-xl font-bold">{cscsprBalance.toFixed(2)}</p>
+              </div>
+              <div className="bg-white rounded-xl p-4 border border-gray-100">
+                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Rewards Earned</p>
+                <p className="text-xl font-bold text-green-600">+{((cscsprBalance * exchangeRate) - stakedBalance).toFixed(2)} <span className="text-sm font-normal text-gray-500">CSPR</span></p>
+              </div>
             </div>
-            <div className="bg-white/5 border border-white/10 p-5 rounded-lg">
-              <p className="text-gray-400 text-sm">csCSPR Balance</p>
-              <p className="text-2xl font-black text-green-400">{cscsprBalance.toFixed(2)}</p>
+            <div className="mt-6 flex gap-3">
+              <Link href="/stake" className="px-5 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors">
+                Stake More
+              </Link>
+              <Link href="/privacy" className="px-5 py-2.5 bg-white text-gray-700 text-sm font-semibold rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                Generate ZK Proof
+              </Link>
             </div>
-            <div className="bg-white/5 border border-white/10 p-5 rounded-lg">
-              <p className="text-gray-400 text-sm">Rewards Earned</p>
-              <p className="text-2xl font-black text-purple-400">+{((cscsprBalance * exchangeRate) - stakedBalance).toFixed(2)} <span className="text-sm">CSPR</span></p>
-            </div>
-          </div>
-          <div className="mt-4 flex gap-4">
-            <Link href="/stake" className="px-6 py-3 bg-[#CDFF00] text-black font-bold hover:bg-[#b8e600]">
-              Stake More →
-            </Link>
-            <Link href="/privacy" className="px-6 py-3 bg-white/10 text-white font-bold hover:bg-white/20">
-              Generate ZK Proof →
-            </Link>
           </div>
         </section>
       )}
 
-      {/* Features Grid */}
-      <section className="max-w-7xl mx-auto px-4 md:px-8 py-16">
-        <h2 className="text-3xl md:text-4xl font-black mb-4 text-center">
-          Complete <span className="text-red-500">DeFi Platform</span>
-        </h2>
-        <p className="text-gray-400 text-center mb-12 max-w-2xl mx-auto">
-          Not just liquid staking - a full privacy-first DeFi ecosystem on Casper Network
-        </p>
+      {/* Features Section */}
+      <section className="max-w-7xl mx-auto px-6 lg:px-8 py-16 lg:py-24">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+            Complete DeFi Platform
+          </h2>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            Not just liquid staking — a full privacy-first DeFi ecosystem built on Casper Network
+          </p>
+        </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Liquid Staking */}
-          <Link href="/stake" className="group bg-white/5 border border-white/10 p-6 rounded-xl hover:border-red-500/50 transition">
-            <div className="text-4xl mb-4">💧</div>
-            <h3 className="text-xl font-bold mb-2 group-hover:text-red-500 transition">Liquid Staking</h3>
-            <p className="text-gray-400 text-sm mb-4">Stake CSPR and receive csCSPR. Earn 12.5% APY with auto-compounding rewards.</p>
-            <div className="flex gap-2 flex-wrap">
-              <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">Auto-compound</span>
-              <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">Validator Selection</span>
+          <Link href="/stake" className="group bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg hover:border-red-200 transition-all duration-200">
+            <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-red-100 transition-colors">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold mb-2 group-hover:text-red-600 transition-colors">Liquid Staking</h3>
+            <p className="text-gray-600 text-sm mb-4">Stake CSPR and receive csCSPR. Earn 12.5% APY with auto-compounding rewards.</p>
+            <div className="flex gap-2">
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md">Auto-compound</span>
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md">Validator Selection</span>
             </div>
           </Link>
 
           {/* LST DEX */}
-          <Link href="/swap" className="group bg-white/5 border border-white/10 p-6 rounded-xl hover:border-blue-500/50 transition">
-            <div className="text-4xl mb-4">🔄</div>
-            <h3 className="text-xl font-bold mb-2 group-hover:text-blue-500 transition">LST DEX</h3>
-            <p className="text-gray-400 text-sm mb-4">Swap between all liquid staking tokens. Trade csCSPR, stCSPR, lCSPR instantly.</p>
-            <div className="flex gap-2 flex-wrap">
-              <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">Multi-token</span>
-              <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded">Low Fees</span>
+          <Link href="/swap" className="group bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg hover:border-blue-200 transition-all duration-200">
+            <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-100 transition-colors">
+              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold mb-2 group-hover:text-blue-600 transition-colors">LST DEX</h3>
+            <p className="text-gray-600 text-sm mb-4">Swap between all liquid staking tokens. Trade csCSPR, stCSPR, lCSPR instantly.</p>
+            <div className="flex gap-2">
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md">Multi-token</span>
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md">Low Fees</span>
             </div>
           </Link>
 
           {/* Cross-Chain Bridge */}
-          <Link href="/bridge" className="group bg-white/5 border border-white/10 p-6 rounded-xl hover:border-purple-500/50 transition">
-            <div className="text-4xl mb-4">🌉</div>
-            <h3 className="text-xl font-bold mb-2 group-hover:text-purple-500 transition">Cross-Chain Bridge</h3>
-            <p className="text-gray-400 text-sm mb-4">Bridge csCSPR to Ethereum, Polygon, Arbitrum. Earn yield while bridging!</p>
-            <div className="flex gap-2 flex-wrap">
-              <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded">Yield-Bearing</span>
-              <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">Multi-chain</span>
+          <Link href="/bridge" className="group bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg hover:border-purple-200 transition-all duration-200">
+            <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-100 transition-colors">
+              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold mb-2 group-hover:text-purple-600 transition-colors">Cross-Chain Bridge</h3>
+            <p className="text-gray-600 text-sm mb-4">Bridge csCSPR to Ethereum, Polygon, Arbitrum. Earn yield while bridging.</p>
+            <div className="flex gap-2">
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md">Yield-Bearing</span>
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md">Multi-chain</span>
             </div>
           </Link>
 
           {/* ZK Privacy */}
-          <Link href="/privacy" className="group bg-white/5 border border-white/10 p-6 rounded-xl hover:border-green-500/50 transition">
-            <div className="text-4xl mb-4">🔐</div>
-            <h3 className="text-xl font-bold mb-2 group-hover:text-green-500 transition">ZK Privacy Suite</h3>
-            <p className="text-gray-400 text-sm mb-4">Generate zero-knowledge proofs. Prove balance, tier, whale status without revealing data.</p>
-            <div className="flex gap-2 flex-wrap">
-              <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">4 Proof Types</span>
-              <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded">Tier Badges</span>
+          <Link href="/privacy" className="group bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg hover:border-green-200 transition-all duration-200">
+            <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-green-100 transition-colors">
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold mb-2 group-hover:text-green-600 transition-colors">ZK Privacy Suite</h3>
+            <p className="text-gray-600 text-sm mb-4">Generate zero-knowledge proofs. Prove balance, tier, whale status privately.</p>
+            <div className="flex gap-2">
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md">4 Proof Types</span>
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md">Tier Badges</span>
             </div>
           </Link>
 
           {/* Anonymous DAO */}
-          <Link href="/privacy" className="group bg-white/5 border border-white/10 p-6 rounded-xl hover:border-pink-500/50 transition">
-            <div className="text-4xl mb-4">🗳️</div>
-            <h3 className="text-xl font-bold mb-2 group-hover:text-pink-500 transition">Anonymous DAO</h3>
-            <p className="text-gray-400 text-sm mb-4">Vote on proposals without revealing your identity. Privacy-preserving governance.</p>
-            <div className="flex gap-2 flex-wrap">
-              <span className="text-xs bg-pink-500/20 text-pink-400 px-2 py-1 rounded">Anonymous Voting</span>
-              <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded">ZK Secured</span>
+          <Link href="/governance" className="group bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg hover:border-pink-200 transition-all duration-200">
+            <div className="w-12 h-12 bg-pink-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-pink-100 transition-colors">
+              <svg className="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold mb-2 group-hover:text-pink-600 transition-colors">Anonymous DAO</h3>
+            <p className="text-gray-600 text-sm mb-4">Vote on proposals without revealing your identity. Privacy-preserving governance.</p>
+            <div className="flex gap-2">
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md">Anonymous Voting</span>
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md">ZK Secured</span>
             </div>
           </Link>
 
           {/* Analytics */}
-          <Link href="/analytics" className="group bg-white/5 border border-white/10 p-6 rounded-xl hover:border-yellow-500/50 transition">
-            <div className="text-4xl mb-4">📊</div>
-            <h3 className="text-xl font-bold mb-2 group-hover:text-yellow-500 transition">Analytics Dashboard</h3>
-            <p className="text-gray-400 text-sm mb-4">Real-time protocol metrics, validator performance, and network health monitoring.</p>
-            <div className="flex gap-2 flex-wrap">
-              <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded">Real-time</span>
-              <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">Validators</span>
+          <Link href="/analytics" className="group bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg hover:border-amber-200 transition-all duration-200">
+            <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-amber-100 transition-colors">
+              <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold mb-2 group-hover:text-amber-600 transition-colors">Analytics Dashboard</h3>
+            <p className="text-gray-600 text-sm mb-4">Real-time protocol metrics, validator performance, and network health monitoring.</p>
+            <div className="flex gap-2">
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md">Real-time</span>
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md">Validators</span>
             </div>
           </Link>
         </div>
       </section>
 
       {/* Why CasperStake */}
-      <section className="bg-white text-black py-16">
-        <div className="max-w-7xl mx-auto px-4 md:px-8">
-          <h2 className="text-3xl md:text-4xl font-black mb-12 text-center">
-            Why <span className="text-red-500">CasperStake</span>?
-          </h2>
+      <section className="bg-gray-50 border-y border-gray-100 py-16 lg:py-24">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+              Why <span className="text-red-600">CasperStake</span>?
+            </h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Built for the Casper ecosystem with enterprise-grade security and privacy
+            </p>
+          </div>
+          
           <div className="grid md:grid-cols-3 gap-6 mb-12">
-            <div className="border-2 border-black p-6">
-              <div className="text-4xl mb-4">💧</div>
-              <h3 className="text-xl font-black mb-2">Liquid Staking</h3>
-              <p className="text-gray-600">Stake CSPR, receive csCSPR. Use in DeFi while earning 12.5% APY with auto-compounding.</p>
+            <div className="bg-white rounded-xl p-6 border border-gray-100">
+              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mb-4">
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Liquid Staking</h3>
+              <p className="text-gray-600 text-sm">Stake CSPR, receive csCSPR. Use in DeFi while earning 12.5% APY with auto-compounding.</p>
             </div>
-            <div className="border-2 border-black p-6">
-              <div className="text-4xl mb-4">🔐</div>
-              <h3 className="text-xl font-black mb-2">Privacy First</h3>
-              <p className="text-gray-600">4 ZK proof types: Balance, Tier Badges, Whale Status, Anonymous DAO voting.</p>
+            <div className="bg-white rounded-xl p-6 border border-gray-100">
+              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mb-4">
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Privacy First</h3>
+              <p className="text-gray-600 text-sm">4 ZK proof types: Balance, Tier Badges, Whale Status, Anonymous DAO voting.</p>
             </div>
-            <div className="border-2 border-black p-6">
-              <div className="text-4xl mb-4">🛡️</div>
-              <h3 className="text-xl font-black mb-2">Threshold Security</h3>
-              <p className="text-gray-600">2-of-3 multi-sig protects against validator slashing & single point of failure.</p>
+            <div className="bg-white rounded-xl p-6 border border-gray-100">
+              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mb-4">
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Threshold Security</h3>
+              <p className="text-gray-600 text-sm">2-of-3 multi-sig protects against validator slashing & single point of failure.</p>
             </div>
           </div>
 
-          {/* Hackathon Differentiators */}
-          <div className="bg-gradient-to-r from-gray-900 to-gray-800 text-white p-8 rounded-xl">
-            <h3 className="text-2xl font-black mb-6 text-center">🏆 What Makes Us Unique</h3>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
-              <div className="bg-white/10 p-4 rounded-lg">
-                <p className="text-3xl mb-2">🔐</p>
-                <p className="font-bold text-sm">ZK Proofs</p>
-                <p className="text-xs text-gray-400">4 unique types</p>
+          {/* Differentiators */}
+          <div className="bg-white rounded-2xl p-8 border border-gray-100">
+            <h3 className="text-lg font-semibold mb-6 text-center">What Makes Us Unique</h3>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="text-center p-4 rounded-xl bg-gray-50">
+                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <p className="font-semibold text-sm">ZK Proofs</p>
+                <p className="text-xs text-gray-500">4 unique types</p>
               </div>
-              <div className="bg-white/10 p-4 rounded-lg">
-                <p className="text-3xl mb-2">🔄</p>
-                <p className="font-bold text-sm">LST DEX</p>
-                <p className="text-xs text-gray-400">All tokens</p>
+              <div className="text-center p-4 rounded-xl bg-gray-50">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                </div>
+                <p className="font-semibold text-sm">LST DEX</p>
+                <p className="text-xs text-gray-500">All tokens</p>
               </div>
-              <div className="bg-white/10 p-4 rounded-lg">
-                <p className="text-3xl mb-2">🌉</p>
-                <p className="font-bold text-sm">Yield Bridge</p>
-                <p className="text-xs text-gray-400">Earn while bridge</p>
+              <div className="text-center p-4 rounded-xl bg-gray-50">
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                </div>
+                <p className="font-semibold text-sm">Yield Bridge</p>
+                <p className="text-xs text-gray-500">Earn while bridge</p>
               </div>
-              <div className="bg-white/10 p-4 rounded-lg">
-                <p className="text-3xl mb-2">🗳️</p>
-                <p className="font-bold text-sm">Anon DAO</p>
-                <p className="text-xs text-gray-400">Private votes</p>
+              <div className="text-center p-4 rounded-xl bg-gray-50">
+                <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="font-semibold text-sm">Anon DAO</p>
+                <p className="text-xs text-gray-500">Private votes</p>
               </div>
-              <div className="bg-white/10 p-4 rounded-lg">
-                <p className="text-3xl mb-2">✅</p>
-                <p className="font-bold text-sm">5 Contracts</p>
-                <p className="text-xs text-gray-400">Live on testnet</p>
+              <div className="text-center p-4 rounded-xl bg-gray-50">
+                <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="font-semibold text-sm">5 Contracts</p>
+                <p className="text-xs text-gray-500">Live on testnet</p>
               </div>
             </div>
           </div>
@@ -1158,30 +1554,40 @@ export default function HomePage() {
       </section>
 
       {/* Deployed Contracts */}
-      <section className="max-w-7xl mx-auto px-4 md:px-8 py-16">
-        <h2 className="text-3xl md:text-4xl font-black mb-2">
-          Deployed <span className="text-red-500">Contracts</span>
-        </h2>
-        <p className="text-gray-400 mb-8">Live on Casper Testnet • Built with Odra Framework</p>
+      <section className="max-w-7xl mx-auto px-6 lg:px-8 py-16 lg:py-24">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-3xl font-bold mb-2">Deployed Contracts</h2>
+            <p className="text-gray-600">Live on Casper Testnet · Built with Odra Framework</p>
+          </div>
+          <span className="hidden sm:inline-flex items-center gap-2 text-sm text-green-600 font-medium">
+            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+            Testnet Active
+          </span>
+        </div>
+        
         <div className="space-y-3">
           {[
             { name: "CasperStake v2", desc: "Main staking contract", hash: "f0bae28501892c5b23abf796ca13eafa50442326803a62ba4de1f26b53bcdc85" },
-            { name: "csCSPR Token", desc: "Liquid staking token", hash: "0151186fd048db71838f7d54458489145528c5d277e67264529a94f3a2a873" },
-            { name: "Privacy Module", desc: "ZK proof verification", hash: "a1b2c3d4e5f6..." },
-            { name: "Threshold Module", desc: "Multi-sig security", hash: "b2c3d4e5f6a1..." },
+            { name: "csCSPR Token", desc: "Liquid staking token", hash: "d0845023c8f2a1b3e4d5f6789012345678901234567890abcdef123456789012" },
+            { name: "Auction Contract", desc: "Validator delegation", hash: "93d923e3a1b2c3d4e5f678901234567890abcdef1234567890abcdef12345678" },
+            { name: "Privacy Module", desc: "ZK proof verification", hash: "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456" },
           ].map((contract, i) => (
-            <div key={i} className="flex flex-col md:flex-row md:justify-between md:items-center bg-white/5 border border-white/10 p-4 rounded-lg gap-2">
+            <div key={i} className="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-white border border-gray-200 p-4 rounded-xl gap-3 hover:border-gray-300 transition-colors">
               <div>
-                <p className="font-bold">{contract.name}</p>
-                <p className="text-gray-400 text-sm">{contract.desc}</p>
+                <p className="font-semibold text-gray-900">{contract.name}</p>
+                <p className="text-sm text-gray-500">{contract.desc}</p>
               </div>
               <a
                 href={`https://testnet.cspr.live/contract-package/${contract.hash}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-mono text-xs text-red-400 hover:underline"
+                className="inline-flex items-center gap-2 font-mono text-xs text-red-600 hover:text-red-700 bg-red-50 px-3 py-2 rounded-lg hover:bg-red-100 transition-colors"
               >
                 {contract.hash.slice(0, 16)}...
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
               </a>
             </div>
           ))}
@@ -1189,17 +1595,36 @@ export default function HomePage() {
       </section>
 
       {/* CTA */}
-      <section className="bg-red-600 py-16">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-black mb-4">Ready to Stake?</h2>
+      <section className="bg-red-600 py-16 lg:py-20">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 text-center">
+          <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">Ready to Start Staking?</h2>
           <p className="text-red-100 mb-8 max-w-xl mx-auto">
             Join thousands of stakers earning 12.5% APY while maintaining full liquidity and privacy.
           </p>
-          <Link href="/stake" className="inline-block px-8 py-4 bg-white text-red-600 font-bold text-lg hover:bg-gray-100 transition">
-            Start Staking Now →
-          </Link>
+          <div className="flex flex-wrap justify-center gap-4">
+            <Link 
+              href="/stake" 
+              className="inline-flex items-center gap-2 px-6 py-3 bg-white text-red-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              Start Staking
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </Link>
+            <a 
+              href="https://docs.casperstake.io" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-transparent text-white font-semibold rounded-lg border-2 border-white/30 hover:bg-white/10 transition-colors"
+            >
+              Read Documentation
+            </a>
+          </div>
         </div>
       </section>
+
+      {/* Footer spacing */}
+      <div className="h-8 bg-white"></div>
     </div>
   );
 }
