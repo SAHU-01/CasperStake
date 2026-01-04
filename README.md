@@ -571,7 +571,7 @@ CasperStake/
 
 ## 🤝 Team
 
-Built by **ZkAGI** for Casper Network Hackathon 2026
+Built by **Ankita** for Casper Network Hackathon 2026
 
 - Full-stack development
 - Smart contract engineering
