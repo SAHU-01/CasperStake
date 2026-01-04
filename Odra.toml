@@ -1,0 +1,11 @@
+[[contracts]]
+fqn = "casper_stake::CasperStake"
+
+[[contracts]]
+fqn = "casper_stake::CsCSPRToken"
+
+[[contracts]]
+fqn = "casper_stake::PrivacyModule"
+
+[[contracts]]
+fqn = "casper_stake::ThresholdModule"
