@@ -25,7 +25,7 @@ export const SWAP_ROUTES: SwapRoute[] = [
     status: 'live',
     fee: 0,
     gas: 5,
-    description: 'Unstake csCSPR (7-day unbonding)',
+    description: 'Unstake csCSPR (14-hour unbonding)',
   },
   {
     from: 'CSPR',

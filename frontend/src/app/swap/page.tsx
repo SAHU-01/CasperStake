@@ -10,7 +10,8 @@ import { RuntimeArgs, CLValueBuilder, CLPublicKey, DeployUtil, CLByteArray } fro
 const CONTRACTS = {
   ROUTER: "d52d2e98554c1854fd8a9ce541a9d52dab73fd2841655513a9c8295898803ce0",
   WCSPR: "4f2d1b772147b9ce3706919fe0750af6964249b0931e2115045f97e1e135e80b",  
-  CSCSPR: "7de7de6418324583a8fd186226fb65c3db36c37480fc11e19d262989279f78bd",
+  CSCSPR_TOKEN: "7de7de6418324583a8fd186226fb65c3db36c37480fc11e19d262989279f78bd",
+  CASPER_STAKE: "8322aff2cdaf904269205090a0a42da0aec6b659bb888a6b7172a6f2cf3bec3f",
   FACTORY: "13cc83616c3fb4e6ea22ead5e61eb6319d728783ed02eab51b1f442085e605a7",
 };
 
@@ -28,7 +29,7 @@ const GAS = {
 const TOKENS = [
   { symbol: "CSPR", name: "Casper", color: "#FF0032", hash: null, decimals: 9 },
   { symbol: "WCSPR", name: "Wrapped CSPR", color: "#FF6B35", hash: CONTRACTS.WCSPR, decimals: 9 },
-  { symbol: "csCSPR", name: "CasperStake LST", color: "#BFFF00", hash: CONTRACTS.CSCSPR, decimals: 9 },
+  { symbol: "csCSPR", name: "CasperStake LST", color: "#BFFF00", hash: CONTRACTS.CSCSPR_TOKEN, decimals: 9 },
 ];
 
 // Swap route types
@@ -50,12 +51,12 @@ const ROUTES: SwapRoute[] = [
   { from: "WCSPR", to: "CSPR", type: "unwrap", fee: 0, wasmFile: "unwrap_cspr.wasm" },
   
   // CSPR <-> Token (need WASM + pool)
-  { from: "CSPR", to: "csCSPR", type: "cspr_to_token", fee: 0.3, wasmFile: "swap_cspr_for_tokens.wasm", needsPool: true },
-  { from: "csCSPR", to: "CSPR", type: "token_to_cspr", fee: 0.3, wasmFile: "swap_tokens_for_cspr.wasm", needsPool: true },
+  // { from: "CSPR", to: "csCSPR", type: "cspr_to_token", fee: 0.3, wasmFile: "swap_cspr_for_tokens.wasm", needsPool: true },
+  { from: "csCSPR", to: "CSPR", type: "token_to_cspr", fee: 0.5, needsPool: false },
   
   // Token <-> Token (no WASM needed, just pool)
-  { from: "WCSPR", to: "csCSPR", type: "token_to_token", fee: 0.3, needsPool: true },
-  { from: "csCSPR", to: "WCSPR", type: "token_to_token", fee: 0.3, needsPool: true },
+  // { from: "WCSPR", to: "csCSPR", type: "token_to_token", fee: 0.3, needsPool: true },
+  // { from: "csCSPR", to: "WCSPR", type: "token_to_token", fee: 0.3, needsPool: true },
 ];
 
 // WASM cache
@@ -349,58 +350,21 @@ export default function SwapPage() {
         // ============================================
         // Token → CSPR (via DEX)
         // ============================================
-        case "token_to_cspr": {
-          // Step 1: Approve token spending
-          showToast("info", "Step 1/2: Approve", "Approving token...", undefined, 0);
-          
-          const approveArgs = RuntimeArgs.fromMap({
-            "spender": CLValueBuilder.key(new CLByteArray(toBytes(CONTRACTS.ROUTER))),
-            "amount": CLValueBuilder.u256(amountMotes.toString())
-          });
+       case "token_to_cspr": {
+  showToast("info", "Request Unstake", "Creating transaction...", undefined, 0);
+  
+  const args = RuntimeArgs.fromMap({
+    "cscspr_amount": CLValueBuilder.u256(amountMotes.toString())
+  });
 
-          const approveDeploy = DeployUtil.makeDeploy(
-            new DeployUtil.DeployParams(CLPublicKey.fromHex(walletAddress), "casper-test", 1, 1800000),
-            DeployUtil.ExecutableDeployItem.newStoredVersionContractByHash(toBytes(fromToken.hash!), null, "approve", approveArgs),
-            DeployUtil.standardPayment(GAS.APPROVE)
-          );
-
-          const approveJson = DeployUtil.deployToJson(approveDeploy);
-          const approveSig = await provider.sign(JSON.stringify(approveJson), walletAddress);
-          if (approveSig.cancelled) {
-            showFinalResult("error", "Cancelled", "Transaction cancelled by user");
-            cleanup();
-            return; // IMPORTANT: Early return
-          }
-
-          const approveData = approveJson.deploy as any;
-          approveData.approvals = [{ signer: walletAddress, signature: walletAddress.substring(0, 2) + approveSig.signatureHex }];
-          await sendDeploy(approveData);
-
-          showToast("info", "Waiting", "Approval processing (~15s)...", undefined, 0);
-          await new Promise(r => setTimeout(r, 15000));
-
-          // Step 2: Swap via session WASM
-          showToast("info", "Step 2/2: Swap", "Executing swap...", undefined, 0);
-          
-          // Path: input token -> WCSPR
-          const path = [`hash-${fromToken.hash}`, `hash-${CONTRACTS.WCSPR}`];
-          
-          const swapArgs = RuntimeArgs.fromMap({
-            "router_hash": new CLByteArray(toBytes(CONTRACTS.ROUTER)),
-            "amount_in": CLValueBuilder.u256(amountMotes.toString()),
-            "amount_out_min": CLValueBuilder.u256(minOutput.toString()),
-            "path": CLValueBuilder.list(path.map(p => CLValueBuilder.string(p))),
-            "deadline": CLValueBuilder.u256(deadline.toString())
-          });
-
-          deploy = DeployUtil.makeDeploy(
-            new DeployUtil.DeployParams(CLPublicKey.fromHex(walletAddress), "casper-test", 1, 1800000),
-            DeployUtil.ExecutableDeployItem.newModuleBytes(wasm.swap_tokens_for_cspr!, swapArgs),
-            DeployUtil.standardPayment(GAS.SWAP_TOKEN_CSPR)
-          );
-          successMsg = `Swapped ${amount} ${fromToken.symbol} → CSPR`;
-          break;
-        }
+  deploy = DeployUtil.makeDeploy(
+    new DeployUtil.DeployParams(CLPublicKey.fromHex(walletAddress), "casper-test", 1, 1800000),
+    DeployUtil.ExecutableDeployItem.newStoredVersionContractByHash(toBytes(CONTRACTS.CASPER_STAKE), null, "request_unstake", args),
+    DeployUtil.standardPayment(15_000_000_000)
+  );
+  successMsg = `Unstake requested: ${amount} csCSPR (14hr unbonding)`;
+  break;
+}
 
         // ============================================
         // Token → Token (via DEX, no WASM needed)
@@ -741,7 +705,7 @@ export default function SwapPage() {
           <div className="space-y-1 font-mono text-white/30">
             <p>Router: {CONTRACTS.ROUTER.slice(0, 16)}...</p>
             <p>WCSPR: {CONTRACTS.WCSPR.slice(0, 16)}...</p>
-            <p>csCSPR: {CONTRACTS.CSCSPR.slice(0, 16)}...</p>
+            <p>csCSPR: {CONTRACTS.CSCSPR_TOKEN.slice(0, 16)}...</p>
           </div>
         </div>
       </main>

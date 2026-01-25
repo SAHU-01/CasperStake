@@ -595,7 +595,7 @@ export default function HistoryPage() {
                     <span className="text-xl">⏳</span>
                     <div>
                       <p className="font-bold text-purple-400 text-sm">Unbonding Period</p>
-                      <p className="text-gray-500 text-xs">CSPR waiting for 7-day unlock</p>
+                      <p className="text-gray-500 text-xs">CSPR waiting for 14 hour unlock</p>
                     </div>
                   </div>
                   <span className="bg-purple-500/20 text-purple-400 text-xs font-bold px-2 py-1 rounded">
