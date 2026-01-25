@@ -1,11 +1,26 @@
-[[contracts]]
-fqn = "casper_stake::CasperStake"
+name = "casper_stake_new"
+ffi = "casper"
 
 [[contracts]]
-fqn = "casper_stake::CsCSPRToken"
+name = "CasperStake"
+fqn = "casper_stake_fresh::casper_stake::CasperStake"
 
 [[contracts]]
-fqn = "casper_stake::PrivacyModule"
+name = "CasperStakeBridge"
+fqn = "casper_stake_fresh::casper_stake_bridge::CasperStakeBridge"
 
 [[contracts]]
-fqn = "casper_stake::ThresholdModule"
+name = "CsCSPRToken"
+fqn = "casper_stake_fresh::token::CsCSPRToken"
+
+[[contracts]]
+name = "PrivacyModule"
+fqn = "casper_stake_fresh::privacy_module::PrivacyModule"
+
+[[contracts]]
+name = "ThresholdModule"
+fqn = "casper_stake_fresh::threshold_module::ThresholdModule"
+
+[[contracts]]
+name = "InstitutionalVault"
+fqn = "casper_stake_fresh::institutional_vault_zk::InstitutionalVault"
