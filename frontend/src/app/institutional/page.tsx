@@ -3,12 +3,13 @@ import { useState, useEffect } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useToast } from "@/components/ToastProvider";
 import { RuntimeArgs, CLValueBuilder, CLPublicKey, DeployUtil } from 'casper-js-sdk';
+import { uploadToIPFS } from '@/services/ipfs';
 
 // ============================================================================
 // CONTRACTS
 // ============================================================================
 const CONTRACTS = {
-  INSTITUTIONAL_VAULT: "hash-19f40a222c6ff03c0bd0a48895b52a8432f43e355e59a62e94eb0d3d709869a3",
+  INSTITUTIONAL_VAULT: "hash-206d85884eceefb3f757e8390e6f420649747804624a5333ddcee13b048d19e8",
   CASPER_STAKE: "hash-8322aff2cdaf904269205090a0a42da0aec6b659bb888a6b7172a6f2cf3bec3f",
 };
 
@@ -210,49 +211,132 @@ export default function InstitutionalPage() {
   // ============================================================================
   
   const handleCreateInstitution = async () => {
-    if (!connected) {
-      showToast('error', 'Connect Wallet', 'Please connect your wallet first');
-      return;
-    }
-    if (!newName.trim()) {
-      showToast('error', 'Invalid', 'Please enter institution name');
-      return;
-    }
-    if (!creatorName.trim()) {
-      showToast('error', 'Invalid', 'Please enter your name/alias');
-      return;
-    }
+  if (!connected) {
+    showToast('error', 'Connect Wallet', 'Please connect your wallet first');
+    return;
+  }
+  if (!newName.trim() || !creatorName.trim()) {
+    showToast('error', 'Invalid', 'Name and creator name required');
+    return;
+  }
 
-    const id = await sha256(newName + walletAddress + Date.now());
-    const inviteCode = id.slice(0, 8).toUpperCase();
+  setLoading(true);
+  let toastId: string | undefined;
 
-    const institution: Institution = {
-      id: id.slice(0, 16),
+  try {
+    // 1. Generate invite code
+    const inviteCode = (await sha256(newName + walletAddress + Date.now())).slice(0, 8).toUpperCase();
+    const inviteCodeHash = await sha256(inviteCode);
+
+    // 2. Upload metadata to IPFS
+    const metadata = {
       name: newName.trim(),
       description: newDescription.trim(),
       icon: newIcon,
-      createdAt: new Date().toISOString(),
-      creatorAddress: walletAddress,
       creatorName: creatorName.trim(),
-      inviteCode,
-      members: [],
-      merkleRoot: '0'.repeat(64),
-      minStake: Math.max(10, parseInt(newMinStake) || 100),
-      totalStaked: 0,
-      referralRewardPercent: Math.min(10, Math.max(1, parseFloat(newReferralPercent) || 5)),
-      isPublic: newIsPublic,
     };
 
-    const updated = [...institutions, institution];
-    setInstitutions(updated);
-    saveInstitutions(updated);
+    toastId = showToast('info', '📤 Uploading to IPFS', 'Storing metadata...', undefined, 0);
+    const metadataCid = await uploadToIPFS(metadata);
+    dismissToast?.(toastId);
 
-    showToast('success', '🎉 Institution Created!', `Share code: ${inviteCode}`);
-    setNewName('');
-    setNewDescription('');
-    setCreatorName('');
-    setActiveTab('my');
-  };
+    // 3. Create on-chain
+    const minStakeMotes = BigInt(Math.floor(Math.max(10, parseInt(newMinStake) || 100) * 1_000_000_000)).toString();
+    const referralPct = Math.min(10, Math.max(1, parseInt(newReferralPercent) || 5));
+
+    console.log('DEBUG args:', {
+      metadataCid,
+      inviteCodeHash,
+      inviteCodeHashU256: hexToU256(inviteCodeHash),
+      minStakeMotes,
+      referralPct,
+      newIsPublic,
+    });
+
+    const runtimeArgs = RuntimeArgs.fromMap({
+      "metadata_cid": CLValueBuilder.string(metadataCid),
+      "invite_code_hash": CLValueBuilder.u256(hexToU256(inviteCodeHash)),
+      "min_stake": CLValueBuilder.u256(minStakeMotes),
+      "referral_percent": CLValueBuilder.u8(referralPct),
+      "is_public": CLValueBuilder.bool(newIsPublic),
+    });
+
+    const contractHashBytes = Uint8Array.from(
+      Buffer.from(CONTRACTS.INSTITUTIONAL_VAULT.replace("hash-", ""), 'hex')
+    );
+
+    const deploy = DeployUtil.makeDeploy(
+      new DeployUtil.DeployParams(CLPublicKey.fromHex(walletAddress), "casper-test", 1, 1800000),
+      DeployUtil.ExecutableDeployItem.newStoredVersionContractByHash(
+        contractHashBytes, null, "create_institution", runtimeArgs
+      ),
+      DeployUtil.standardPayment(25_000_000_000)
+    );
+
+    const deployJson = DeployUtil.deployToJson(deploy);
+    toastId = showToast('info', '✍️ Sign Transaction', 'Creating on-chain...', undefined, 0);
+
+    const provider = window.CasperWalletProvider!();
+    const signResult = await provider.sign(JSON.stringify(deployJson), walletAddress);
+    if (signResult.cancelled) {
+      dismissToast?.(toastId);
+      showToast('error', 'Cancelled', '');
+      setLoading(false);
+      return;
+    }
+
+    dismissToast?.(toastId);
+    toastId = showToast('info', '📡 Broadcasting', '...', undefined, 0);
+
+    const algoPrefix = walletAddress.substring(0, 2);
+    const deployData = deployJson.deploy as any;
+    deployData.approvals = [{ signer: walletAddress, signature: algoPrefix + signResult.signatureHex }];
+    const deployHash = await putDeployViaProxy(deployData);
+
+    dismissToast?.(toastId);
+    toastId = showToast('info', '⏳ Confirming', `TX: ${deployHash.slice(0, 16)}...`, deployHash, 0);
+
+    const result = await waitForDeploy(deployHash);
+    dismissToast?.(toastId);
+
+    if (result.success) {
+      // Save locally
+      const institution: Institution = {
+        id: (await sha256(newName + walletAddress + Date.now())).slice(0, 16),
+        name: newName.trim(),
+        description: newDescription.trim(),
+        icon: newIcon,
+        createdAt: new Date().toISOString(),
+        creatorAddress: walletAddress,
+        creatorName: creatorName.trim(),
+        inviteCode,
+        members: [],
+        merkleRoot: '0'.repeat(64),
+        minStake: Math.max(10, parseInt(newMinStake) || 100),
+        totalStaked: 0,
+        referralRewardPercent: referralPct,
+        isPublic: newIsPublic,
+      };
+
+      const updated = [...institutions, institution];
+      setInstitutions(updated);
+      saveInstitutions(updated);
+
+      showToast('success', '🎉 Institution Created!', `Code: ${inviteCode} | IPFS: ${metadataCid.slice(0,12)}...`, deployHash, 15000);
+      setNewName('');
+      setNewDescription('');
+      setCreatorName('');
+      setActiveTab('my');
+    } else {
+      showToast('error', 'Failed', result.error || 'Check explorer', deployHash, 10000);
+    }
+  } catch (error: any) {
+    if (toastId) dismissToast?.(toastId);
+    showToast('error', 'Error', error.message);
+  }
+
+  setLoading(false);
+};
 
   // ============================================================================
   // JOIN INSTITUTION
