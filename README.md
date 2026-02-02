@@ -136,6 +136,36 @@ Full Casper wallet support:
 - Real balance fetching
 - Transaction signing
 
+### 🏛️ Institutional ZK Vault (NEW)
+
+Privacy-preserving institutional staking with referral rewards.
+
+| Feature | Description |
+|---------|-------------|
+| **Create Institutions** | Anyone can create a staking institution |
+| **IPFS Metadata** | Institution data stored on Pinata IPFS |
+| **Invite Codes** | 8-character codes for member onboarding |
+| **ZK Privacy** | Merkle membership proofs - stake without revealing identity |
+| **Referral Rewards** | Creators earn 1-10% of members' staking rewards |
+| **On-Chain Registry** | Full institution registry stored on Casper |
+
+**Architecture:**
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Frontend  │────▶│  IPFS       │────▶│  Casper     │
+│   (Next.js) │     │  (Pinata)   │     │  Blockchain │
+└─────────────┘     └─────────────┘     └─────────────┘
+      │                   │                    │
+      │  Metadata         │  CID               │  Institution
+      │  Upload           │  Storage           │  Registry
+      ▼                   ▼                    ▼
+┌─────────────────────────────────────────────────────┐
+│              InstitutionalVault Contract            │
+│  • create_institution()  • stake_with_zk_proof()    │
+│  • update_merkle_root()  • referral_earnings        │
+└─────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## 🔄 How Liquid Staking Works
@@ -417,9 +447,9 @@ Step 5: Track Position
 
 | Contract | Description | Hash | Explorer |
 |----------|-------------|------|----------|
-| **CasperStake v2** | Main staking logic | `f0bae285...bcdc85` | [View ↗](https://testnet.cspr.live/contract-package/f0bae28501892c5b23abf796ca13eafa50442326803a62ba4de1f26b53bcdc85) |
-| **csCSPR Token** | CEP-18 liquid staking token | `d0845023...` | [View ↗](https://testnet.cspr.live) |
-| **Auction Integration** | Validator delegation | `93d923e3...` | [View ↗](https://testnet.cspr.live) |
+| **CasperStake v14** | Main staking logic | `hash-8322aff2cdaf904269205090a0a42da0aec6b659bb888a6b7172a6f2cf3bec3f` | [View ↗](https://testnet.cspr.live/contract/8322aff2cdaf904269205090a0a42da0aec6b659bb888a6b7172a6f2cf3bec3f) |
+| **csCSPR Token** | CEP-18 liquid staking token | `hash-7de7de6418324583a8fd186226fb65c3db36c37480fc11e19d262989279f78bd` | [View ↗](https://testnet.cspr.live/contract/7de7de6418324583a8fd186226fb65c3db36c37480fc11e19d262989279f78bd) |
+| **InstitutionalVault** | ZK Privacy Staking + Referrals | `hash-206d85884eceefb3f757e8390e6f420649747804624a5333ddcee13b048d19e8` | [View ↗](https://testnet.cspr.live/contract/206d85884eceefb3f757e8390e6f420649747804624a5333ddcee13b048d19e8) |
 
 ### Contract Interactions
 
@@ -461,6 +491,7 @@ Check Balance   →    balance_of(addr)  →   csCSPR balance
 | Vercel | Frontend hosting |
 | Casper Testnet | Blockchain network |
 | Casper Wallet | User authentication |
+| **Pinata IPFS** | Decentralized metadata storage |
 
 ---
 
@@ -492,10 +523,19 @@ npm install
 Create `.env.local` in `/frontend`:
 
 ```env
-NEXT_PUBLIC_CASPER_NODE_URL=https://testnet.casper.network/rpc
-NEXT_PUBLIC_NETWORK_NAME=casper-test
-NEXT_PUBLIC_CONTRACT_HASH=f0bae28501892c5b23abf796ca13eafa50442326803a62ba4de1f26b53bcdc85
-NEXT_PUBLIC_CSCSPR_CONTRACT=d0845023c8f2a1b3e4d5f6789012345678901234567890abcdef123456789012
+# Casper Network
+NEXT_PUBLIC_CASPER_NODE=http://65.109.83.79:7777/rpc
+NEXT_PUBLIC_CHAIN_NAME=casper-test
+
+# Contract Hashes
+NEXT_PUBLIC_CASPER_STAKE_HASH=hash-8322aff2cdaf904269205090a0a42da0aec6b659bb888a6b7172a6f2cf3bec3f
+NEXT_PUBLIC_CSCSPR_TOKEN_HASH=hash-7de7de6418324583a8fd186226fb65c3db36c37480fc11e19d262989279f78bd
+NEXT_PUBLIC_INSTITUTIONAL_VAULT_HASH=hash-206d85884eceefb3f757e8390e6f420649747804624a5333ddcee13b048d19e8
+
+# Pinata IPFS (for Institutional Vault)
+NEXT_PUBLIC_PINATA_API_KEY=your_api_key
+NEXT_PUBLIC_PINATA_SECRET=your_secret
+NEXT_PUBLIC_IPFS_GATEWAY=https://gateway.pinata.cloud/ipfs
 ```
 
 ### 4. Run Development Server
@@ -555,15 +595,11 @@ CasperStake/
 | Phase | Timeline | Status | Milestone |
 |-------|----------|--------|-----------|
 | **Phase 1** | Q1 2026 | ✅ Complete | Testnet Launch, Hackathon Submission |
-| **Phase 2** | Q2 2026 | 🔄 Planned | Security Audit, Bug Bounty |
+| **Phase 2** | Q1 2026 | ✅ Complete | ZK Institutional Vault, IPFS Integration, Referral System |
 | **Phase 3** | Q3 2026 | 📋 Planned | Mainnet Launch, Validator Partnerships |
-| **Phase 4** | Q4 2026 | 📋 Planned | ZK-Proofs (RISC Zero), Governance |
 
 ### Future Features
 
-- [ ] ZK-Proof of Reserves (RISC Zero integration)
-- [ ] Governance module (csCSPR voting)
-- [ ] Multiple validator selection
 - [ ] Mobile app (React Native)
 - [ ] Cross-chain bridge integration
 
